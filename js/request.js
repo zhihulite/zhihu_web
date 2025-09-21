@@ -154,7 +154,8 @@ export async function unifiedFetch(input, init = {}) {
         console.log("[UnifiedFetch] Using GM/Tampermonkey XMLHttpRequest");
         return unifiedFetchForBrowserUnderGM(url, options);
     } else {
-        console.warn("[UnifiedFetch] Falling back to native fetch");
+        alert("请前往https://greasyfork.org/scripts/508709 安装脚本后使用 (中国大陆可能无法访问)");
+        throw new Error("[UnifiedFetch] Neither Capacitor nor GM/Tampermonkey found");
         return fetch(input, init);
     }
 }
