@@ -1,0 +1,105 @@
+<div class="page" data-name="home">
+    <!-- 顶部导航栏 -->
+    <div class="navbar navbar-large">
+        <div class="navbar-bg"></div>
+        <div class="navbar-inner">
+            <div class="left">
+                <a
+                        href="#"
+                        class="link icon-only panel-open"
+                        data-panel="left"
+                >
+                    <i class="icon f7-icons if-not-md">menu</i>
+                    <i class="icon material-icons if-md">menu</i>
+                </a>
+            </div>
+            <div class="title sliding">Zyphron</div>
+            <div class="title-large">
+                <div class="title-large-text">Zyphron</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 可滚动的页面内容 -->
+    <div class="page-content">
+        <div class="block">
+            <div id="counter" v-scope="count()">
+                <p>计数：{{ count }}</p>
+                <button @click="inc">+</button>
+                <button @click="dec">-</button>
+                <button @click="reset">重置</button>
+            </div>
+
+            <p>
+                这是一个选项卡布局应用的示例。此类布局的要点是每个选项卡都包含独立的视图，拥有各自的路由和导航。
+            </p>
+
+            <p>
+                每个选项卡/视图可以有不同的布局、不同类型的导航栏（动态、固定或静态），也可以像本选项卡一样没有导航栏。
+            </p>
+        </div>
+        <div class="block-title">导航</div>
+        <div class="list list-strong inset list-dividers-ios">
+            <ul>
+                <li>
+                    <a href="/about/" class="item-content item-link">
+                        <div class="item-inner">
+                            <div class="item-title">关于</div>
+                        </div>
+                    </a>
+                </li>
+                <li>
+                    <a href="/form/" class="item-content item-link">
+                        <div class="item-inner">
+                            <div class="item-title">表单</div>
+                        </div>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="block-title">模态框</div>
+        <div class="block grid grid-cols-2 grid-gap">
+            <a
+                    href="#"
+                    class="button button-fill popup-open"
+                    data-popup="#my-popup"
+            >弹出层</a
+            >
+            <a
+                    href="#"
+                    class="button button-fill login-screen-open"
+                    data-login-screen="#my-login-screen"
+            >登录界面</a
+            >
+        </div>
+
+        <div class="block-title">面板</div>
+        <div class="block grid grid-cols-2 grid-gap">
+            <a
+                    href="#"
+                    class="button button-fill panel-open"
+                    data-panel="left"
+            >左侧面板</a
+            >
+        </div>
+
+        <div class="list list-strong inset list-dividers-ios links-list">
+            <ul>
+                <li>
+                    <a href="/dynamic-route/blog/45/post/125/?foo=bar#about"
+                    >动态（组件）路由</a
+                    >
+                </li>
+                <li>
+                    <a href="/load-something-that-doesnt-exist/"
+                    >默认路由（404）</a
+                    >
+                </li>
+                <li>
+                    <a href="/request-and-load/user/123456/">请求数据并加载</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

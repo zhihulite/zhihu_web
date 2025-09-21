@@ -1,0 +1,36 @@
+<template>
+  <div class="page" data-name="product">
+    <div class="navbar">
+      <div class="navbar-bg"></div>
+      <div class="navbar-inner sliding">
+        <div class="left">
+          <a href="#" class="link back">
+            <i class="icon icon-back"></i>
+            <span class="if-not-md">Back</span>
+          </a>
+        </div>
+        <div class="title">${currentProduct.title}</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <div class="block-title">About ${currentProduct.title}</div>
+      <div class="block">
+        ${currentProduct.description}
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+  export default (props, { $f7route, $store }) => {
+    const products = $store.getters.products;
+    const productId = $f7route.params.id;
+    let currentProduct;
+    products.value.forEach((product) => {
+      if (product.id === productId) {
+        currentProduct = product;
+      }
+    });
+
+    return $render;
+  };
+</script>

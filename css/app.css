@@ -1,0 +1,22 @@
+.card-content {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.recommend-preloader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#webviewFrame {
+  width: 100%;
+  height: calc(100% - var(--f7-safe-area-bottom));
+  border: none;
+}
+#webview-content {
+  overflow: hidden !important;
+  touch-action: none !important;
+  padding-bottom: 0 !important;
+}

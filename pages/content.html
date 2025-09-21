@@ -1,0 +1,299 @@
+<template>
+    <div class="page">
+        <div class="navbar">
+            <div class="navbar-bg"></div>
+            <div class="navbar-inner sliding">
+                <div class="left">
+                    <a href="#" class="link back">
+                        <i class="icon icon-back"></i>
+                        <span class="if-not-md">Back</span>
+                    </a>
+                </div>
+                <div class="title">页面</div>
+                <div class="right">
+                    <a id="open-original-link" class="link external" target="_blank"
+                        href="https://www.zhihu.com/${$f7route.params.type}/${$f7route.params.id}"
+                    title="在新窗口打开原文">
+                    <i class="icon f7-icons">arrow_up_right_square</i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="page-content">
+            <div id="dynamic-content"></div>
+        </div>
+    </div>
+</template>
+
+<style>
+    .author-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .author-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+    }
+
+    .author-text {
+        flex-grow: 1;
+    }
+
+    .author-name {
+        font-weight: bold;
+    }
+
+    .author-headline {
+        font-size: 14px;
+        color: #888;
+    }
+
+    .card-link-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-link-content {
+        flex: 1 1 auto;
+    }
+
+    .card-link-image-container {
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+    }
+
+    .card-link-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .swiper {
+        width: 100%;
+        height: auto;
+    }
+
+    .swiper-slide {
+        text-align: center;
+        font-size: 18px;
+        background: #fff;
+        /* Center slide text vertically */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .swiper-slide img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+</style>
+
+<script>
+    export default function (props, { $f7, $f7route, $on, $onBeforeMount, $onMounted, $onBeforeUnmount, $onUnmounted }) {
+        alert("部分页面渲染不完全 请向 https://github.com/huajiqaq/zhihu_web 提供issue")
+        const renderZhihuContent = (segments) => {
+            if (!segments || segments.length === 0) {
+                return '';
+            }
+
+            return segments.map((item) => {
+                const type = item.type;
+                const content = item[type];
+
+                switch (type) {
+                    case 'paragraph':
+                        return `<p>${content.text}</p>`;
+                    case 'heading':
+                        return `<h3>${content.text}</h3>`;
+                    case 'code_block':
+                        return `<pre><code>${content.content}</code></pre>`;
+                    case 'blockquote': {
+                        let text = content.text;
+                        content.marks.forEach(mark => {
+                            if (mark.link) {
+                                const link = `<a href="${mark.link.href}">${text.substring(mark.start_index, mark.end_index)}</a>`;
+                                text = text.slice(0, mark.start_index) + link + text.slice(mark.end_index);
+                            }
+                        });
+                        return `<blockquote><p>${text}</p></blockquote>`;
+                    }
+                    case 'list_node': {
+                        const listItems = content.items.map(item => {
+                            let text = item.text;
+                            if (item.marks.length > 0) {
+                                item.marks.forEach(mark => {
+                                    const highlight = `<span class="highlight">${text.substring(mark.start_index, mark.end_index)}</span>`;
+                                    text = text.slice(0, mark.start_index) + highlight + text.slice(mark.end_index);
+                                });
+                            }
+                            return `<li style="padding-left: ${item.indent_level * 20}px">${text}</li>`;
+                        });
+                        return `<ul>${listItems.join('')}</ul>`;
+                    }
+                    case 'hr':
+                        return '<hr>';
+                    case 'image':
+                        return `<figure><img src="${content.urls[0]}" style="width:100%"><figcaption>${content.description}</figcaption></figure>`;
+                    case 'card': {
+                        const extraInfo = JSON.parse(content.extra_info);
+                        return `<a href="${extraInfo.url}" class="card-link">
+                        <div class="card card-outline-md">
+                          <div class="card-content card-content-padding">
+                            <div class="card-link-container">
+                              <div class="card-link-content">
+                                <div class="card-link-title">${content.title || extraInfo.description}</div>
+                                <div class="card-link-desc">${extraInfo.desc}</div>
+                              </div>
+                              <div class="card-link-image-container">
+                                <img src="${content.cover}" class="card-link-image">
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </a>`;
+                    }
+                    case 'video':
+                        return `<figure>
+                      <video controls autoplay loop class="video-placeholder" data-video-id="${content.id}" style="width:100%"></video>
+                      <figcaption>${content.title}</figcaption>
+                    </figure>`;
+                    case 'myapptip':
+                        return `<p>${content.text}</p>`;
+                    default:
+                        return '';
+                }
+            }).join('');
+        };
+
+        $on('pageInit', async (e, page) => {
+            console.log('pageInit', e);
+            const pageparams = $f7route.params;
+            const pageid = pageparams.id;
+            const pageType = pageparams.type;
+            const dynamicContent = document.getElementById('dynamic-content');
+
+            // 显示加载状态
+            dynamicContent.innerHTML = '<div class="block block-strong inset text-align-center">加载中...</div>';
+
+            try {
+                const resData = await window.zhihu.get(`https://api.zhihu.com/${pageType}s/v2/${pageid}`);
+                let htmlContent = '';
+
+                // 如果有作者信息，渲染作者信息部分
+                if (resData.author) {
+                    htmlContent += `
+              <div class="block">
+                <div class="card card-outline-md">
+                  <div class="card-content card-content-padding">
+                    <div class="author-info">
+                      <img src="${resData.author.avatar.avatar_image.day}" class="author-avatar" />
+                      <div class="author-text">
+                        <div class="author-name">${resData.author.fullname}</div>
+                        <div class="author-headline">${resData.author.description}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>`;
+                }
+
+                if (resData.image_list) {
+                    const slides = resData.image_list.images.map(img => `
+                <swiper-slide>
+                    <figure>
+                        <img src="${img.url}" style="width:100%">
+                        <figcaption>${img.description || ''}</figcaption>
+                    </figure>
+                </swiper-slide>
+            `).join('');
+
+                    htmlContent += `
+                <div class="block block-strong inset">
+                    <swiper-container pagination="true">
+                        ${slides}
+                    </swiper-container>
+                </div>`;
+                }
+
+                // 核心内容处理逻辑
+                let segments = resData.structured_content ? [...resData.structured_content.segments] : [];
+
+                if (resData.relationship_tips) {
+                    segments.unshift({
+                        type: "myapptip",
+                        myapptip: { text: resData.relationship_tips.text }
+                    });
+                }
+                if (resData.video) {
+                    segments.unshift({
+                        type: "video",
+                        video: { id: resData.video.attachment_id, title: resData.video.title }
+                    });
+                }
+
+                if (resData.type === "answer" && resData.header) {
+                    segments.unshift({
+                        type: "heading",
+                        heading: { text: resData.header.text }
+                    });
+                }
+
+
+                // 底部信息处理
+                const contentEndInfo = resData.content_end_info;
+                let bottomText = "未知";
+                if (contentEndInfo) {
+                    if (contentEndInfo.update_time_text) {
+                        bottomText = contentEndInfo.update_time_text;
+                    } else if (contentEndInfo.create_time_text) {
+                        bottomText = contentEndInfo.create_time_text;
+                    }
+                    if (contentEndInfo.ip_info) {
+                        bottomText += " · " + contentEndInfo.ip_info;
+                    }
+                }
+                segments.push({
+                    type: "myapptip",
+                    myapptip: { text: bottomText }
+                });
+
+                window.ss = segments
+
+                htmlContent += `<div class="block-title">内容正文</div>
+                                <div class="block block-strong inset">${renderZhihuContent(segments)}</div>`;
+
+                // 手动更新 DOM
+                dynamicContent.innerHTML = htmlContent;
+
+                // 处理视频URL的二次请求
+                document.querySelectorAll('video.video-placeholder').forEach(async (videoEl) => {
+                    const videoId = videoEl.dataset.videoId;
+                    try {
+                        const videoRes = await fetch(`https://lens.zhihu.com/api/v4/videos/${videoId}`);
+                        const videoJson = await videoRes.json();
+                        const videoUrl = videoJson.playlist.SD?.play_url || videoJson.playlist.HD?.play_url || videoJson.playlist.LD?.play_url;
+                        if (videoUrl) {
+                            videoEl.src = videoUrl;
+                        }
+                    } catch (err) {
+                        console.error('Failed to load video:', err);
+                    }
+                });
+
+            } catch (err) {
+                console.error('Failed to load content:', err);
+                dynamicContent.innerHTML = '<div class="block block-strong inset text-align-center">内容加载失败。</div>';
+            }
+        });
+
+        return $render;
+    }
+</script>

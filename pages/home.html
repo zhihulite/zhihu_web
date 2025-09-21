@@ -1,0 +1,53 @@
+<div class="page" data-name="home">
+  <!-- 顶部导航栏 -->
+  <div class="navbar navbar-large">
+    <div class="navbar-bg"></div>
+    <div class="navbar-inner">
+      <div class="left">
+        <a href="#" class="link icon-only panel-open" data-panel="left">
+          <i class="icon f7-icons if-not-md">menu</i>
+          <i class="icon material-icons if-md">menu</i>
+        </a>
+      </div>
+      <div class="title sliding">Zyphron</div>
+      <div class="title-large">
+        <div class="title-large-text">Zyphron</div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="page-content ptr-content infinite-scroll-content"
+    id="recommend-container"
+    data-infinite-distance="200"
+  >
+    <div class="ptr-preloader">
+      <div class="preloader"></div>
+      <div class="ptr-arrow"></div>
+    </div>
+    <div id="recommend" v-scope="RecommendCards()" @vue:mounted="init()">
+      <div
+        class="recommend-card card"
+        v-for="(item, idx) in recommendations"
+        :key="idx"
+      >
+        <a style="color: inherit" :href="`/content/${item.dataType ?? 'unknown'}/${item.id ?? ''}`">
+          <div class="card-header" v-if="item.header">{{ item.header }}</div>
+          <div class="card-content">{{ item.content }}</div>
+        </a>
+        <a
+          class="card-footer"
+          :href="`javascript:openLink('${item.authorUrl}')`"
+          rel="noopener"
+        >
+          {{ item.footer }}
+        </a>
+      </div>
+      <!-- Framework7无限滚动预加载器 -->
+      <div
+        class="preloader infinite-scroll-preloader"
+        v-show="nextUrl && loadingMore"
+      ></div>
+    </div>
+  </div>
+</div>

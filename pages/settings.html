@@ -1,0 +1,148 @@
+<div class="page" data-name="settings" v-scope="ThemeComponent()">
+  <div class="navbar">
+    <div class="navbar-bg"></div>
+    <div class="navbar-inner sliding">
+      <div class="title">Settings</div>
+    </div>
+  </div>
+  <div class="page-content">
+    <div class="block-title">外观</div>
+    <div class="list">
+      <ul>
+        <li>
+          <div class="item-content">
+            <div class="item-inner">
+              <div class="item-title">主题</div>
+              <div class="item-after">
+                <div class="segmented segmented-strong">
+                  <a
+                    class="button"
+                    :class="{ 'button-active': currentTheme === 'auto' }"
+                    @click="setTheme('auto')"
+                    >跟随系统</a
+                  >
+                  <a
+                    class="button"
+                    :class="{ 'button-active': currentTheme === 'light' }"
+                    @click="setTheme('light')"
+                    >浅色</a
+                  >
+                  <a
+                    class="button"
+                    :class="{ 'button-active': currentTheme === 'dark' }"
+                    @click="setTheme('dark')"
+                    >深色</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+        <li>
+          <div class="item-content">
+            <div class="item-inner">
+              <div class="item-title">风格</div>
+              <div class="item-after">
+                <div class="segmented segmented-strong">
+                  <a
+                    class="button"
+                    :class="{ 'button-active': currentStyle === 'auto' }"
+                    @click="setStyle('auto')"
+                    >跟随系统</a
+                  >
+                  <a
+                    class="button"
+                    :class="{ 'button-active': currentStyle === 'md' }"
+                    @click="setStyle('md')"
+                    >MD3</a
+                  >
+                  <a
+                    class="button"
+                    :class="{ 'button-active': currentStyle === 'ios' }"
+                    @click="setStyle('ios')"
+                    >iOS11</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="block-title">知乎Api</div>
+    <div class="list">
+      <ul>
+        <li>
+          <div class="item-content">
+            <div class="item-inner">
+              <div class="item-title">Cookies</div>
+              <div class="item-after">
+                <div class="segmented segmented-strong">
+                  <a class="button popup-open" data-popup="#cookies-popup"
+                    >编辑</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div
+    class="popup"
+    id="cookies-popup"
+    v-scope="CookieEditor()"
+    @popup:open="loadCookies()"
+  >
+    <div class="view">
+      <div class="page">
+        <div class="navbar">
+          <div class="navbar-bg"></div>
+          <div class="navbar-inner">
+            <div class="title">Cookie编辑</div>
+            <div class="right">
+              <!-- <a href="#" class="link popup-close"
+                ><i class="icon material-icons if-md">close</i></a
+              > -->
+            </div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="list">
+            <ul>
+              <li class="align-top">
+                <div class="item-content item-input">
+                  <div class="item-inner">
+                    <div class="item-input-wrap">
+                      <textarea
+                        v-model="cookieJsonString"
+                        placeholder='请输入 JSON 格式的 Cookie。例如：{"key": "value"}'
+                        style="height: 250px !important; resize: none"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="block block-inset">
+            <a
+              href="#"
+              @click="saveCookies()"
+              class="button button-large button-fill popup-close"
+              >保存</a
+            >
+          </div>
+          <div class="block block-inset">
+            <a href="#" class="button button-large button-fill popup-close"
+              >关闭</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

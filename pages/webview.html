@@ -1,0 +1,41 @@
+<template>
+  <div class="page no-toolbar">
+    <div class="navbar">
+      <div class="navbar-bg"></div>
+      <div class="navbar-inner sliding">
+        <div class="left">
+          <a href="#" class="link back" id="webiew-back-button">
+            <i class="icon icon-back"></i>
+            <span class="if-not-md">Back</span>
+          </a>
+        </div>
+        <div class="title">WebView</div>
+      </div>
+    </div>
+    <div class="page-content" id="webview-content">
+      <iframe id="webviewFrame"></iframe>
+    </div>
+  </div>
+</template>
+<style>
+  p {
+    margin: 10px 0;
+  }
+</style>
+<script>
+  export default function (props, { $onMounted, $onUnmounted }) {
+    $onMounted(() => {
+      const iframe = document.getElementById("webviewFrame");
+      iframe.onload = () => {
+        iframe.contentWindow.alert("hello world");
+      };
+      iframe.src = atob(props.url) || "about:blank";
+    });
+
+    $onUnmounted(() => {
+      setTimeout(() => {}, 10);
+    });
+
+    return $render;
+  }
+</script>

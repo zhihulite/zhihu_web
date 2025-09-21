@@ -1,0 +1,115 @@
+<template>
+  <div class="page">
+    <div class="navbar">
+      <div class="navbar-bg"></div>
+      <div class="navbar-inner sliding">
+        <div class="left">
+          <a href="#" class="link back">
+            <i class="icon icon-back"></i>
+            <span class="if-not-md">Back</span>
+          </a>
+        </div>
+        <div class="title">Component Page</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <div class="block block-strong inset">
+        <p>Component page template is compiled as ES Template. In addition it has lifecycle hooks, events handling, data
+          managment and Virtual DOM data bindings.</p>
+        <p>It is useful to use Component page when you need page-specific logic.</p>
+      </div>
+      <div class="block-title">Events Handling</div>
+      <div class="block block-strong inset">
+        <a href="#" class="button button-fill" @click=${openAlert}>Open Alert</a>
+      </div>
+      <div class="block-title">Page Component Data</div>
+      <div class="block block-strong inset">
+        <p>Hello! My name is ${name}. I am ${age} years old.</p>
+        <p>I like to play:</p>
+        <ul>
+          ${likes.map((item) => $h`
+          <li>${item}</li>
+          `)}
+        </ul>
+      </div>
+      <div class="block-title">Extended Context</div>
+      <div class="block block-strong inset">
+        <p>Component page context as Template7 page context is also extended with some additional variables.</p>
+        <h4>$f7route</h4>
+        <p>Contains properties of the current route:</p>
+        <ul style="padding-left:25px">
+          <li><b>$f7route.url</b>: ${$f7route.url}</li>
+          <li><b>$f7route.path</b>: ${$f7route.path}</li>
+          <li><b>$f7route.params</b>: ${JSON.stringify($f7route.params)}</li>
+          <li><b>$f7route.hash</b>: ${$f7route.hash}</li>
+          <li><b>$f7route.query</b>: ${JSON.stringify($f7route.query)}</li>
+        </ul>
+
+        <h4>$theme</h4>
+        <p>Currently active theme:</p>
+        <ul style="padding-left:25px">
+          <li><b>$theme.ios</b>: ${$theme.ios}</li>
+          <li><b>$theme.md</b>: ${$theme.md}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+<style>
+  p {
+    margin: 10px 0;
+  }
+</style>
+<script>
+  export default function (props, { $f7, $on, $onBeforeMount, $onMounted, $onBeforeUnmount, $onUnmounted }) {
+    // Component Data
+    let name = 'Jimmy';
+    let age = 25;
+    let likes = ['Tennis', 'Chess', 'Football'];
+
+    // Component Methods
+    const openAlert = () => {
+      $f7.dialog.alert('Hello World');
+    }
+
+    // Lifecycle
+    $onBeforeMount(() => {
+      console.log('onBeforeMount');
+    });
+    $onMounted(() => {
+      console.log('onMounted');
+    });
+    $onBeforeUnmount(() => {
+      console.log('onBeforeUnmount');
+    });
+    $onUnmounted(() => {
+      console.log('onUnmounted');
+    });
+
+    // Page Events
+    $on('pageMounted', (e, page) => {
+      console.log('pageMounted', page);
+    });
+    $on('pageInit', (e, page) => {
+      console.log('pageInit', page);
+    });
+    $on('pageBeforeIn', (e, page) => {
+      console.log('pageBeforeIn', page);
+    });
+    $on('pageAfterIn', (e, page) => {
+      console.log('pageAfterIn', page);
+    });
+    $on('pageBeforeOut', (e, page) => {
+      console.log('pageBeforeOut', page);
+    });
+    $on('pageAfterOut', (e, page) => {
+      console.log('pageAfterOut', page);
+    });
+    $on('pageBeforeRemove', (e, page) => {
+      console.log('pageBeforeRemove', page);
+    });
+
+    // Return render function
+    return $render;
+  }
+</script>
