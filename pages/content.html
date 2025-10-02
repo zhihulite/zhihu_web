@@ -584,6 +584,33 @@
         dynamicContent.innerHTML =
           '<div class="block block-strong contents inset text-align-center">内容加载失败。</div>';
       }
+
+      // 在内容渲染后添加 Photo Browser 功能
+      setTimeout(() => {
+        // 收集所有图片
+        const imgEls = page.$el.find(".contents img");
+        const photos = [];
+        imgEls.forEach((img) => {
+          if (img.src) photos.push(img.src);
+        });
+
+        if (photos.length > 0) {
+          // 创建 Photo Browser 实例
+          const photoBrowser = app.photoBrowser.create({
+            photos: photos,
+            type: "standalone",
+            theme: "auto",
+          });
+
+          // 给所有图片加点击事件
+          imgEls.forEach((img, idx) => {
+            img.style.cursor = "pointer";
+            img.addEventListener("click", () => {
+              photoBrowser.open(idx);
+            });
+          });
+        }
+      }, 0);
     });
 
     return $render;
