@@ -1,225 +1,268 @@
 <template>
-    <div class="page">
-        <div class="navbar">
-            <div class="navbar-bg"></div>
-            <div class="navbar-inner sliding">
-                <div class="left">
-                    <a href="#" class="link back">
-                        <i class="icon icon-back"></i>
-                        <span class="if-not-md">Back</span>
-                    </a>
-                </div>
-                <div class="title">加载中</div>
-                <div class="right">
-                    <a id="open-original-link" class="link external" target="_blank"
-                        href="https://www.zhihu.com/${$f7route.params.type}/${$f7route.params.id}" title="在新窗口打开原文">
-                        <i class="icon f7-icons">arrow_up_right_square</i>
-                    </a>
-                </div>
-            </div>
+  <div class="page no-toolbar">
+    <div class="navbar">
+      <div class="navbar-bg"></div>
+      <div class="navbar-inner sliding">
+        <div class="left">
+          <a href="#" class="link back">
+            <i class="icon icon-back"></i>
+            <span class="if-not-md">Back</span>
+          </a>
         </div>
-        <div class="page-content">
-            <div id="dynamic-content"></div>
+        <div class="title">加载中</div>
+        <div class="right">
+          <a
+            id="open-original-link"
+            class="link external"
+            target="_blank"
+            href="https://www.zhihu.com/${$f7route.params.type}/${$f7route.params.id}"
+            title="在新窗口打开原文"
+          >
+            <i class="icon f7-icons">arrow_up_right_square</i>
+          </a>
         </div>
+      </div>
     </div>
+    <div class="page-content full-content">
+      <div id="dynamic-content"></div>
+    </div>
+  </div>
 </template>
 
 <style>
-    .author-info {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+  .author-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-    .author-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-    }
+  .author-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+  }
 
-    .author-text {
-        flex-grow: 1;
-    }
+  .author-text {
+    flex-grow: 1;
+  }
 
-    .author-name {
-        font-weight: bold;
-    }
+  .author-name {
+    font-weight: bold;
+  }
 
-    .author-headline {
-        font-size: 14px;
-        color: #888;
-    }
+  .author-headline {
+    font-size: 14px;
+    color: #888;
+  }
 
-    .card-link-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+  .card-link-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-    .card-link-content {
-        flex: 1 1 auto;
-    }
+  .card-link-content {
+    flex: 1 1 auto;
+  }
 
-    .card-link-image-container {
-        width: 60px;
-        height: 60px;
-        flex-shrink: 0;
-    }
+  .card-link-image-container {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+  }
 
-    .card-link-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+  .card-link-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-    .swiper {
-        width: 100%;
-        height: auto;
-    }
+  .swiper {
+    width: 100%;
+    height: auto;
+  }
 
-    .swiper-slide {
-        text-align: center;
-        font-size: 18px;
-        background: #fff;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+  .swiper-slide {
+    text-align: center;
+    font-size: 18px;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-    .swiper-slide img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+  .swiper-slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-    #toc-container ul {
-        list-style: none;
-        padding-left: 0;
-    }
+  #toc-container ul {
+    list-style: none;
+    padding-left: 0;
+  }
 
-    #toc-container li {
-        padding: 5px 0;
-    }
+  #toc-container li {
+    padding: 5px 0;
+  }
 
-    #toc-container a:hover {
-        text-decoration: underline;
-    }
+  #toc-container a:hover {
+    text-decoration: underline;
+  }
 
-    .toc-item-hidden {
-        display: none;
-    }
+  .toc-item-hidden {
+    display: none;
+  }
 
-    .toc-toggle-btn {
-        color: var(--f7-theme-color);
-        padding: 5px 0;
-        font-size: 0.9em;
-        text-align: center;
-    }
+  .toc-toggle-btn {
+    color: var(--f7-theme-color);
+    padding: 5px 0;
+    font-size: 0.9em;
+    text-align: center;
+  }
 </style>
 
 <script>
-    export default function (props, { $f7, $f7route, $f7router, $on, $onBeforeMount, $onMounted, $onBeforeUnmount, $onUnmounted, $el }) {
-        alert("部分页面渲染不完全 请向 https://github.com/huajiqaq/zhihu_web 提供issue")
+  export default function (
+    props,
+    {
+      $f7,
+      $f7route,
+      $f7router,
+      $on,
+      $onBeforeMount,
+      $onMounted,
+      $onBeforeUnmount,
+      $onUnmounted,
+      $el,
+    }
+  ) {
+    alert(
+      "部分页面渲染不完全 请向 https://github.com/huajiqaq/zhihu_web 提供issue"
+    );
 
-        let navbarHeight = 0;
-        const renderZhihuContentWithIds = (segments) => {
-            if (!segments || segments.length === 0) {
-                return '';
+    let navbarHeight = 0;
+    const renderZhihuContentWithIds = (segments) => {
+      if (!segments || segments.length === 0) {
+        return "";
+      }
+
+      return segments
+        .map((item, index) => {
+          const type = item.type;
+          const content = item[type];
+
+          switch (type) {
+            case "paragraph":
+              let paragraphText = content.text || "";
+              if (content.marks && Array.isArray(content.marks)) {
+                const sortedMarks = [...content.marks].sort(
+                  (a, b) => b.start_index - a.start_index
+                );
+                sortedMarks.forEach((mark) => {
+                  if (mark.start_index != null && mark.end_index != null) {
+                    const start = mark.start_index;
+                    const end = mark.end_index;
+                    const originalText = paragraphText.substring(start, end);
+                    let replacementText = originalText;
+
+                    if (mark.link && mark.link.href) {
+                      replacementText = `<a href="${mark.link.href}">${originalText}</a>`;
+                    }
+
+                    paragraphText =
+                      paragraphText.substring(0, start) +
+                      replacementText +
+                      paragraphText.substring(end);
+                  }
+                });
+              }
+              return `<p>${paragraphText}</p>`;
+            case "heading":
+              // navbar 高度依靠测量
+              const headingIdForRender = `heading-${index}`;
+              return `<h3 style="scroll-margin: ${navbarHeight}px" id="${headingIdForRender}">${
+                content.text || ""
+              }</h3>`;
+            case "code_block":
+              return `<pre><code>${content.content || ""}</code></pre>`;
+            case "blockquote": {
+              let text = content.text || "";
+              if (content.marks && Array.isArray(content.marks)) {
+                const sortedMarks = [...content.marks].sort(
+                  (a, b) => b.start_index - a.start_index
+                );
+                sortedMarks.forEach((mark) => {
+                  if (mark.start_index != null && mark.end_index != null) {
+                    const start = mark.start_index;
+                    const end = mark.end_index;
+                    const originalText = text.substring(start, end);
+                    let replacementText = originalText;
+                    if (mark.link && mark.link.href) {
+                      replacementText = `<a href="${mark.link.href}">${originalText}</a>`;
+                    }
+                    text =
+                      text.substring(0, start) +
+                      replacementText +
+                      text.substring(end);
+                  }
+                });
+              }
+              return `<blockquote><p>${text}</p></blockquote>`;
             }
-
-            return segments.map((item, index) => {
-                const type = item.type;
-                const content = item[type];
-
-                switch (type) {
-                    case 'paragraph':
-                        let paragraphText = content.text || '';
-                        if (content.marks && Array.isArray(content.marks)) {
-                            const sortedMarks = [...content.marks].sort((a, b) => b.start_index - a.start_index);
-                            sortedMarks.forEach(mark => {
-                                if (mark.start_index != null && mark.end_index != null) {
-                                    const start = mark.start_index;
-                                    const end = mark.end_index;
-                                    const originalText = paragraphText.substring(start, end);
-                                    let replacementText = originalText;
-
-                                    if (mark.link && mark.link.href) {
-                                        replacementText = `<a href="${mark.link.href}">${originalText}</a>`;
-                                    }
-
-                                    paragraphText = paragraphText.substring(0, start) + replacementText + paragraphText.substring(end);
-                                }
-                            });
-                        }
-                        return `<p>${paragraphText}</p>`;
-                    case 'heading':
-                        // navbar 高度依靠测量
-                        const headingIdForRender = `heading-${index}`;
-                        return `<h3 style="scroll-margin: ${navbarHeight}px" id="${headingIdForRender}">${content.text || ''}</h3>`;
-                    case 'code_block':
-                        return `<pre><code>${content.content || ''}</code></pre>`;
-                    case 'blockquote': {
-                        let text = content.text || '';
-                        if (content.marks && Array.isArray(content.marks)) {
-                            const sortedMarks = [...content.marks].sort((a, b) => b.start_index - a.start_index);
-                            sortedMarks.forEach(mark => {
-                                if (mark.start_index != null && mark.end_index != null) {
-                                    const start = mark.start_index;
-                                    const end = mark.end_index;
-                                    const originalText = text.substring(start, end);
-                                    let replacementText = originalText;
-                                    if (mark.link && mark.link.href) {
-                                        replacementText = `<a href="${mark.link.href}">${originalText}</a>`;
-                                    }
-                                    text = text.substring(0, start) + replacementText + text.substring(end);
-                                }
-                            });
-                        }
-                        return `<blockquote><p>${text}</p></blockquote>`;
+            case "list_node": {
+              const listItems = content.items.map((item) => {
+                let text = item.text || "";
+                if (item.marks && Array.isArray(item.marks)) {
+                  const sortedMarks = [...item.marks].sort(
+                    (a, b) => b.start_index - a.start_index
+                  );
+                  sortedMarks.forEach((mark) => {
+                    if (mark.start_index != null && mark.end_index != null) {
+                      const start = mark.start_index;
+                      const end = mark.end_index;
+                      const originalText = text.substring(start, end);
+                      let replacementText = originalText;
+                      if (mark.link && mark.link.href) {
+                        replacementText = `<a href="${mark.link.href}">${originalText}</a>`;
+                      } else {
+                        replacementText = `<span class="highlight">${originalText}</span>`;
+                      }
+                      text =
+                        text.substring(0, start) +
+                        replacementText +
+                        text.substring(end);
                     }
-                    case 'list_node': {
-                        const listItems = content.items.map(item => {
-                            let text = item.text || '';
-                            if (item.marks && Array.isArray(item.marks)) {
-                                const sortedMarks = [...item.marks].sort((a, b) => b.start_index - a.start_index);
-                                sortedMarks.forEach(mark => {
-                                    if (mark.start_index != null && mark.end_index != null) {
-                                        const start = mark.start_index;
-                                        const end = mark.end_index;
-                                        const originalText = text.substring(start, end);
-                                        let replacementText = originalText;
-                                        if (mark.link && mark.link.href) {
-                                            replacementText = `<a href="${mark.link.href}">${originalText}</a>`;
-                                        } else {
-                                            replacementText = `<span class="highlight">${originalText}</span>`;
-                                        }
-                                        text = text.substring(0, start) + replacementText + text.substring(end);
-                                    }
-                                });
-                            }
-                            return `<li style="padding-left: ${(item.indent_level || 0) * 20}px">${text}</li>`;
-                        });
-                        const listTag = content.ordered ? 'ol' : 'ul';
-                        return `<${listTag}>${listItems.join('')}</${listTag}>`;
-                    }
-                    case 'hr':
-                        return '<hr>';
-                    case 'image':
-                        const imgUrl = (content.urls && content.urls[0]) ? content.urls[0] : '';
-                        const imgDesc = content.description || '';
-                        return `<figure><img src="${imgUrl}" style="width:100%" alt="${imgDesc}"><figcaption>${imgDesc}</figcaption></figure>`;
-                    case 'card': {
-                        let extraInfo = {};
-                        try {
-                            extraInfo = content.extra_info ? JSON.parse(content.extra_info) : {};
-                        } catch (e) {
-                            console.error("Failed to parse card extra_info:", e);
-                        }
-                        const cardTitle = content.title || extraInfo.description || '';
-                        const cardDesc = extraInfo.desc || '';
-                        const cardUrl = extraInfo.url || '#';
-                        return `<a href="${cardUrl}" class="card-link external" target="_blank">
+                  });
+                }
+                return `<li style="padding-left: ${
+                  (item.indent_level || 0) * 20
+                }px">${text}</li>`;
+              });
+              const listTag = content.ordered ? "ol" : "ul";
+              return `<${listTag}>${listItems.join("")}</${listTag}>`;
+            }
+            case "hr":
+              return "<hr>";
+            case "image":
+              const imgUrl =
+                content.urls && content.urls[0] ? content.urls[0] : "";
+              const imgDesc = content.description || "";
+              return `<figure><img src="${imgUrl}" style="width:100%" alt="${imgDesc}"><figcaption>${imgDesc}</figcaption></figure>`;
+            case "card": {
+              let extraInfo = {};
+              try {
+                extraInfo = content.extra_info
+                  ? JSON.parse(content.extra_info)
+                  : {};
+              } catch (e) {
+                console.error("Failed to parse card extra_info:", e);
+              }
+              const cardTitle = content.title || extraInfo.description || "";
+              const cardDesc = extraInfo.desc || "";
+              const cardUrl = extraInfo.url || "#";
+              return `<a href="${cardUrl}" class="card-link external" target="_blank">
                                 <div class="card card-outline-md">
                                   <div class="card-content card-content-padding">
                                     <div class="card-link-container">
@@ -228,25 +271,37 @@
                                         <div class="card-link-desc">${cardDesc}</div>
                                       </div>
                                       <div class="card-link-image-container">
-                                        <img src="${content.cover || ''}" class="card-link-image" alt="Card Cover">
+                                        <img src="${
+                                          content.cover || ""
+                                        }" class="card-link-image" alt="Card Cover">
                                       </div>
                                     </div>
                                   </div>
                                 </div>
                               </a>`;
-                    }
-                    case 'video':
-                        return `<figure>
-                              <video controls class="video-placeholder" data-video-id="${content.id}" style="width:100%; background-color: #eee;">Your browser does not support the video tag.</video>
-                              <figcaption>${content.title || 'Video'}</figcaption>
+            }
+            case "video":
+              return `<figure>
+                              <video controls class="video-placeholder" data-video-id="${
+                                content.id
+                              }" style="width:100%; background-color: #eee;">Your browser does not support the video tag.</video>
+                              <figcaption>${
+                                content.title || "Video"
+                              }</figcaption>
                             </figure>`;
-                    case 'myapptip':
-                        return `<p class="text-color-gray" style="font-size: 0.9em;">${content.text || ''}</p>`;
-                    case 'author':
-                        const authorName = content.name || content.fullname || 'Unknown';
-                        const authorHeadline = content.headline || content.description || '';
-                        const authorAvatar = content.avatar_url || content.avatar?.avatar_image?.day || 'path/to/default/avatar.png';
-                        return `
+            case "myapptip":
+              return `<p class="text-color-gray" style="font-size: 0.9em;">${
+                content.text || ""
+              }</p>`;
+            case "author":
+              const authorName = content.name || content.fullname || "Unknown";
+              const authorHeadline =
+                content.headline || content.description || "";
+              const authorAvatar =
+                content.avatar_url ||
+                content.avatar?.avatar_image?.day ||
+                "path/to/default/avatar.png";
+              return `
                          <div class="block">
                            <div class="card card-outline-md">
                              <div class="card-content card-content-padding">
@@ -260,224 +315,272 @@
                              </div>
                            </div>
                          </div>`;
-                    default:
-                        console.warn(`Unhandled content type: ${type}`);
-                        return `<p style="color: orange;">[Unhandled type: ${type}]</p>`;
-                }
-            }).join('');
-        };
+            default:
+              console.warn(`Unhandled content type: ${type}`);
+              return `<p style="color: orange;">[Unhandled type: ${type}]</p>`;
+          }
+        })
+        .join("");
+    };
 
-        $on('pageInit', async (e, page) => {
-            const pageparams = $f7route.params;
-            const pageid = pageparams.id;
-            const pageType = pageparams.type;
-            const dynamicContent = page.$el.find('#dynamic-content')[0];
+    $on("pageInit", async (e, page) => {
+      const pageparams = $f7route.params;
+      const pageid = pageparams.id;
+      const pageType = pageparams.type;
+      const dynamicContent = page.$el.find("#dynamic-content")[0];
 
-            function getGetType(pageType) {
-                switch (pageType) {
-                    case 'p':
-                        return 'article';
-                    default:
-                        return pageType;
-                }
-            }
+      function getGetType(pageType) {
+        switch (pageType) {
+          case "p":
+            return "article";
+          default:
+            return pageType;
+        }
+      }
 
-            dynamicContent.innerHTML = '<div class="block block-strong inset text-align-center">加载中...</div>';
+      dynamicContent.innerHTML =
+        '<div class="block block-strong inset text-align-center">加载中...</div>';
 
-            try {
-                const resData = await window.zhihu.get(`https://api.zhihu.com/${getGetType(pageType)}s/v2/${pageid}`);
-                const navbarEl = app.navbar.getElByPage(page);
-                // 测量navbar高度
-                navbarHeight = navbarEl.offsetHeight;
-                if (resData.header) {
-                    navbarEl.querySelector(".title").textContent = resData.header.text
-                }
+      try {
+        const resData = await window.zhihu.get(
+          `https://api.zhihu.com/${getGetType(pageType)}s/v2/${pageid}`
+        );
+        const navbarEl = app.navbar.getElByPage(page);
+        // 测量navbar高度
+        navbarHeight = navbarEl.offsetHeight;
+        if (resData.header) {
+          navbarEl.querySelector(".title").textContent = resData.header.text;
+        }
 
-                let htmlContent = '';
+        let htmlContent = "";
 
-                if (resData.author) {
-                    htmlContent += `
+        if (resData.author) {
+          htmlContent += `
               <div class="block">
                 <div class="card card-outline-md">
                   <div class="card-content card-content-padding">
                     <div class="author-info">
-                      <img src="${resData.author.avatar?.avatar_image?.day}" class="author-avatar" alt="${resData.author.fullname || 'Author'}'s Avatar" />
+                      <img src="${
+                        resData.author.avatar?.avatar_image?.day
+                      }" class="author-avatar" alt="${
+            resData.author.fullname || "Author"
+          }'s Avatar" />
                       <div class="author-text">
-                        <div class="author-name">${resData.author.fullname || resData.author.name || '未知作者'}</div>
-                        <div class="author-headline">${resData.author.description || resData.author.headline || ''}</div>
+                        <div class="author-name">${
+                          resData.author.fullname ||
+                          resData.author.name ||
+                          "未知作者"
+                        }</div>
+                        <div class="author-headline">${
+                          resData.author.description ||
+                          resData.author.headline ||
+                          ""
+                        }</div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>`;
-                }
+        }
 
-                let tocHtml = '';
-                const tocItems = [];
-                let segments = resData.structured_content ? [...resData.structured_content.segments] : [];
+        let tocHtml = "";
+        const tocItems = [];
+        let segments = resData.structured_content
+          ? [...resData.structured_content.segments]
+          : [];
 
-                if (resData.relationship_tips) {
-                    segments.unshift({
-                        type: "myapptip",
-                        myapptip: { text: resData.relationship_tips.text }
-                    });
-                }
-                if (resData.video) {
-                    segments.unshift({
-                        type: "video",
-                        video: { id: resData.video.attachment_id, title: resData.video.title }
-                    });
-                }
+        if (resData.relationship_tips) {
+          segments.unshift({
+            type: "myapptip",
+            myapptip: { text: resData.relationship_tips.text },
+          });
+        }
+        if (resData.video) {
+          segments.unshift({
+            type: "video",
+            video: {
+              id: resData.video.attachment_id,
+              title: resData.video.title,
+            },
+          });
+        }
 
-                if (pageType === 'p') {
-                    segments.forEach((segment, index) => {
-                        if (segment.type === 'heading' && segment.heading?.text) {
-                            const headingId = `heading-${index}`;
-                            const headingText = segment.heading.text;
-                            tocItems.push({ id: headingId, text: headingText });
-                        }
-                    });
+        if (pageType === "p") {
+          segments.forEach((segment, index) => {
+            if (segment.type === "heading" && segment.heading?.text) {
+              const headingId = `heading-${index}`;
+              const headingText = segment.heading.text;
+              tocItems.push({ id: headingId, text: headingText });
+            }
+          });
 
-                    if (tocItems.length > 0) {
-                        const MAX_VISIBLE_ITEMS = 3;
-                        const hasMoreThanMax = tocItems.length > MAX_VISIBLE_ITEMS;
+          if (tocItems.length > 0) {
+            const MAX_VISIBLE_ITEMS = 3;
+            const hasMoreThanMax = tocItems.length > MAX_VISIBLE_ITEMS;
 
-                        const tocListItemsHtml = tocItems.map((item, i) => {
-                            const linkHtml = `<a href="#" data-target-id="${item.id}">${item.text}</a>`;
-                            const liClass = i >= MAX_VISIBLE_ITEMS ? 'toc-item-hidden' : '';
-                            return `<li class="${liClass}">${linkHtml}</li>`;
-                        }).join('');
+            const tocListItemsHtml = tocItems
+              .map((item, i) => {
+                const linkHtml = `<a href="#" data-target-id="${item.id}">${item.text}</a>`;
+                const liClass = i >= MAX_VISIBLE_ITEMS ? "toc-item-hidden" : "";
+                return `<li class="${liClass}">${linkHtml}</li>`;
+              })
+              .join("");
 
-                        const toggleButtonHtml = hasMoreThanMax ?
-                            `<div id="toc-toggle-btn" class="toc-toggle-btn">展开 (${tocItems.length - MAX_VISIBLE_ITEMS} 项)</div>` : '';
+            const toggleButtonHtml = hasMoreThanMax
+              ? `<div id="toc-toggle-btn" class="toc-toggle-btn">展开 (${
+                  tocItems.length - MAX_VISIBLE_ITEMS
+                } 项)</div>`
+              : "";
 
-                        tocHtml = `
+            tocHtml = `
                             <div id="toc-container" class="block">
                                 <div class="block-title">目录</div>
                                 <ul id="toc-list">${tocListItemsHtml}</ul>
                                 ${toggleButtonHtml}
                             </div>`;
+          }
+        }
 
-                    }
-                }
-
-
-                if (resData.image_list) {
-                    const images = resData.image_list.images || [];
-                    if (images.length > 0) {
-                        const slides = images.map(img => `
+        if (resData.image_list) {
+          const images = resData.image_list.images || [];
+          if (images.length > 0) {
+            const slides = images
+              .map(
+                (img) => `
                              <swiper-slide>
                                  <figure>
-                                     <img src="${img.url}" style="width:100%" alt="Image">
-                                     <figcaption>${img.description || ''}</figcaption>
+                                     <img src="${
+                                       img.url
+                                     }" style="width:100%" alt="Image">
+                                     <figcaption>${
+                                       img.description || ""
+                                     }</figcaption>
                                  </figure>
                              </swiper-slide>
-                         `).join('');
+                         `
+              )
+              .join("");
 
-                        htmlContent += `
+            htmlContent += `
                              <div class="block block-strong inset">
                                  <swiper-container pagination="true" class="swiper">
                                      ${slides}
                                  </swiper-container>
                              </div>`;
-                    }
-                }
+          }
+        }
 
-                const contentEndInfo = resData.content_end_info;
-                let bottomText = "未知";
-                if (contentEndInfo) {
-                    if (contentEndInfo.update_time_text) {
-                        bottomText = contentEndInfo.update_time_text;
-                    } else if (contentEndInfo.create_time_text) {
-                        bottomText = contentEndInfo.create_time_text;
-                    }
-                    if (contentEndInfo.ip_info) {
-                        bottomText += " · " + contentEndInfo.ip_info;
-                    }
-                }
-                segments.push({
-                    type: "myapptip",
-                    myapptip: { text: bottomText }
-                });
-
-                htmlContent += tocHtml;
-                htmlContent += `<div class="block-title">内容正文</div>
-                                <div class="block block-strong inset">${renderZhihuContentWithIds(segments)}</div>`;
-
-                dynamicContent.innerHTML = htmlContent;
-
-                if (pageType === 'p' && tocItems.length > 0) {
-                    const tocLinks = page.$el.find('#toc-list a[data-target-id]');
-
-                    tocLinks.forEach(link => {
-                        link.addEventListener('click', function (e) {
-                            e.preventDefault();
-
-                            const targetId = this.getAttribute('data-target-id');
-                            const targetElement = page.$el.find(`#${targetId}`)[0];
-
-                            if (targetElement) {
-                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                // const offsetTop = targetElement.offsetTop - 80; // 80px 是示例偏移量
-                                // page.$el.find('.page-content')[0].scrollTo({ top: offsetTop, behavior: 'smooth' });
-                            } else {
-                                console.warn(`Target element with ID '${targetId}' not found.`);
-                            }
-                        });
-                    });
-
-                    if (tocItems.length > 3) {
-                        const toggleButton = page.$el.find('#toc-toggle-btn')[0];
-                        if (toggleButton) {
-                            let isExpanded = false;
-                            const hiddenItems = page.$el.find('#toc-list .toc-item-hidden');
-
-                            toggleButton.addEventListener('click', function () {
-                                if (isExpanded) {
-                                    hiddenItems.forEach(item => item.classList.add('toc-item-hidden'));
-                                    this.textContent = `展开 (${tocItems.length - 3} 项)`;
-                                } else {
-                                    hiddenItems.forEach(item => item.classList.remove('toc-item-hidden'));
-                                    this.textContent = '收起';
-                                }
-                                isExpanded = !isExpanded;
-                            });
-                        }
-                    }
-                }
-
-                const videoPlaceholders = page.$el.find('video.video-placeholder[data-video-id]');
-                videoPlaceholders.forEach(async (videoEl) => {
-                    const videoId = videoEl.dataset.videoId;
-                    if (!videoId) return;
-                    try {
-                        const videoRes = await fetch(`https://lens.zhihu.com/api/v4/videos/${videoId}`);
-                        if (!videoRes.ok) {
-                            throw new Error(`Video API HTTP error! status: ${videoRes.status}`);
-                        }
-                        const videoJson = await videoRes.json();
-                        const videoUrl = videoJson.playlist?.SD?.play_url ||
-                            videoJson.playlist?.HD?.play_url ||
-                            videoJson.playlist?.LD?.play_url ||
-                            '';
-                        if (videoUrl) {
-                            videoEl.src = videoUrl;
-                            videoEl.innerHTML = '';
-                        } else {
-                            videoEl.innerHTML = '视频源加载失败';
-                        }
-                    } catch (err) {
-                        console.error(`Failed to load video ${videoId}:`, err);
-                        videoEl.innerHTML = '视频加载失败';
-                    }
-                });
-
-            } catch (err) {
-                console.error('Failed to load content:', err);
-                dynamicContent.innerHTML = '<div class="block block-strong inset text-align-center">内容加载失败。</div>';
-            }
+        const contentEndInfo = resData.content_end_info;
+        let bottomText = "未知";
+        if (contentEndInfo) {
+          if (contentEndInfo.update_time_text) {
+            bottomText = contentEndInfo.update_time_text;
+          } else if (contentEndInfo.create_time_text) {
+            bottomText = contentEndInfo.create_time_text;
+          }
+          if (contentEndInfo.ip_info) {
+            bottomText += " · " + contentEndInfo.ip_info;
+          }
+        }
+        segments.push({
+          type: "myapptip",
+          myapptip: { text: bottomText },
         });
 
-        return $render;
-    }
+        htmlContent += tocHtml;
+        htmlContent += `<div class="block-title">内容正文</div>
+                                <div class="block block-strong inset">${renderZhihuContentWithIds(
+                                  segments
+                                )}</div>`;
+
+        dynamicContent.innerHTML = htmlContent;
+
+        if (pageType === "p" && tocItems.length > 0) {
+          const tocLinks = page.$el.find("#toc-list a[data-target-id]");
+
+          tocLinks.forEach((link) => {
+            link.addEventListener("click", function (e) {
+              e.preventDefault();
+
+              const targetId = this.getAttribute("data-target-id");
+              const targetElement = page.$el.find(`#${targetId}`)[0];
+
+              if (targetElement) {
+                targetElement.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+                // const offsetTop = targetElement.offsetTop - 80; // 80px 是示例偏移量
+                // page.$el.find('.page-content')[0].scrollTo({ top: offsetTop, behavior: 'smooth' });
+              } else {
+                console.warn(`Target element with ID '${targetId}' not found.`);
+              }
+            });
+          });
+
+          if (tocItems.length > 3) {
+            const toggleButton = page.$el.find("#toc-toggle-btn")[0];
+            if (toggleButton) {
+              let isExpanded = false;
+              const hiddenItems = page.$el.find("#toc-list .toc-item-hidden");
+
+              toggleButton.addEventListener("click", function () {
+                if (isExpanded) {
+                  hiddenItems.forEach((item) =>
+                    item.classList.add("toc-item-hidden")
+                  );
+                  this.textContent = `展开 (${tocItems.length - 3} 项)`;
+                } else {
+                  hiddenItems.forEach((item) =>
+                    item.classList.remove("toc-item-hidden")
+                  );
+                  this.textContent = "收起";
+                }
+                isExpanded = !isExpanded;
+              });
+            }
+          }
+        }
+
+        const videoPlaceholders = page.$el.find(
+          "video.video-placeholder[data-video-id]"
+        );
+        videoPlaceholders.forEach(async (videoEl) => {
+          const videoId = videoEl.dataset.videoId;
+          if (!videoId) return;
+          try {
+            const videoRes = await fetch(
+              `https://lens.zhihu.com/api/v4/videos/${videoId}`
+            );
+            if (!videoRes.ok) {
+              throw new Error(
+                `Video API HTTP error! status: ${videoRes.status}`
+              );
+            }
+            const videoJson = await videoRes.json();
+            const videoUrl =
+              videoJson.playlist?.SD?.play_url ||
+              videoJson.playlist?.HD?.play_url ||
+              videoJson.playlist?.LD?.play_url ||
+              "";
+            if (videoUrl) {
+              videoEl.src = videoUrl;
+              videoEl.innerHTML = "";
+            } else {
+              videoEl.innerHTML = "视频源加载失败";
+            }
+          } catch (err) {
+            console.error(`Failed to load video ${videoId}:`, err);
+            videoEl.innerHTML = "视频加载失败";
+          }
+        });
+      } catch (err) {
+        console.error("Failed to load content:", err);
+        dynamicContent.innerHTML =
+          '<div class="block block-strong inset text-align-center">内容加载失败。</div>';
+      }
+    });
+
+    return $render;
+  }
 </script>

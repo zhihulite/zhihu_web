@@ -15,8 +15,18 @@
   height: calc(100% - var(--f7-safe-area-bottom));
   border: none;
 }
+
 #webview-content {
   overflow: hidden !important;
   touch-action: none !important;
+}
+
+.full-content {
   padding-bottom: 0 !important;
+}
+
+.toolbar.toolbar-force-hide {
+  transform: translateY(100%) !important;
+  transition: none !important;
+  visibility: hidden !important;
 }
