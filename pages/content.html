@@ -554,7 +554,7 @@
           const videoId = videoEl.dataset.videoId;
           if (!videoId) return;
           try {
-            const videoRes = await fetch(
+            const videoRes = await unifiedFetch(
               `https://lens.zhihu.com/api/v4/videos/${videoId}`
             );
             if (!videoRes.ok) {
