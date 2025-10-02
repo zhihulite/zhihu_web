@@ -67,6 +67,37 @@
             </div>
           </div>
         </li>
+        <li>
+          <div class="item-content">
+            <div class="item-inner">
+              <div class="item-title">字体大小</div>
+              <div class="item-after" style="min-width: 180px">
+                <div
+                  style="width: 120px; display: inline-block; margin-right: 8px"
+                >
+                  <div
+                    class="range-slider range-slider-init color-blue"
+                    data-label="false"
+                    data-min="12"
+                    data-max="24"
+                    data-step="1"
+                    :data-value="fontSize"
+                  >
+                    <input
+                      type="range"
+                      min="12"
+                      max="24"
+                      step="1"
+                      v-model="fontSize"
+                      @input="updateFontSize"
+                    />
+                  </div>
+                </div>
+                <span> {{ fontSize == 12 ? '默认' : fontSize + 'px' }} </span>
+              </div>
+            </div>
+          </div>
+        </li>
       </ul>
     </div>
 

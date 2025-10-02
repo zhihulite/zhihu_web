@@ -30,6 +30,11 @@
 </template>
 
 <style>
+  /* 在.content下的p */
+  .contents p {
+    font-size: var(--content-p-font-size, 16px);
+  }
+
   .author-info {
     display: flex;
     align-items: center;
@@ -339,7 +344,7 @@
       }
 
       dynamicContent.innerHTML =
-        '<div class="block block-strong inset text-align-center">加载中...</div>';
+        '<div class="block block-strong inset contents text-align-center">加载中...</div>';
 
       try {
         const resData = await window.zhihu.get(
@@ -462,7 +467,7 @@
               .join("");
 
             htmlContent += `
-                             <div class="block block-strong inset">
+                             <div class="block block-strong inset contents">
                                  <swiper-container pagination="true" class="swiper">
                                      ${slides}
                                  </swiper-container>
@@ -489,7 +494,7 @@
 
         htmlContent += tocHtml;
         htmlContent += `<div class="block-title">内容正文</div>
-                                <div class="block block-strong inset">${renderZhihuContentWithIds(
+                                <div class="block block-strong contents inset">${renderZhihuContentWithIds(
                                   segments
                                 )}</div>`;
 
@@ -577,7 +582,7 @@
       } catch (err) {
         console.error("Failed to load content:", err);
         dynamicContent.innerHTML =
-          '<div class="block block-strong inset text-align-center">内容加载失败。</div>';
+          '<div class="block block-strong contents inset text-align-center">内容加载失败。</div>';
       }
     });
 
