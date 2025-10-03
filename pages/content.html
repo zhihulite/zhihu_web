@@ -289,9 +289,9 @@
               return `<figure>
                               <video controls class="video-placeholder" data-video-id="${
                                 content.id
-                              }" style="width:100%; background-color: #eee;">Your browser does not support the video tag.</video>
+                              }" style="width:100%; background-color: #eee;">您的浏览器不支持 video 标签。</video>
                               <figcaption>${
-                                content.title || "Video"
+                                content.title || "视频"
                               }</figcaption>
                             </figure>`;
             case "myapptip":
@@ -299,7 +299,7 @@
                 content.text || ""
               }</p>`;
             case "author":
-              const authorName = content.name || content.fullname || "Unknown";
+              const authorName = content.name || content.fullname || "未知";
               const authorHeadline =
                 content.headline || content.description || "";
               const authorAvatar =
@@ -311,7 +311,7 @@
                            <div class="card card-outline-md">
                              <div class="card-content card-content-padding">
                                <div class="author-info">
-                                 <img src="${authorAvatar}" class="author-avatar" alt="${authorName}'s avatar" />
+                                 <img src="${authorAvatar}" class="author-avatar" alt="${authorName} 的头像" />
                                  <div class="author-text">
                                    <div class="author-name">${authorName}</div>
                                    <div class="author-headline">${authorHeadline}</div>
@@ -321,8 +321,8 @@
                            </div>
                          </div>`;
             default:
-              console.warn(`Unhandled content type: ${type}`);
-              return `<p style="color: orange;">[Unhandled type: ${type}]</p>`;
+              console.warn(`未处理的内容类型: ${type}`);
+              return `<p style="color: orange;">[未处理的类型: ${type}]</p>`;
           }
         })
         .join("");
@@ -368,8 +368,8 @@
                       <img src="${
                         resData.author.avatar?.avatar_image?.day
                       }" class="author-avatar" alt="${
-            resData.author.fullname || "Author"
-          }'s Avatar" />
+            resData.author.fullname || "作者"
+          }的头像" />
                       <div class="author-text">
                         <div class="author-name">${
                           resData.author.fullname ||
@@ -456,7 +456,7 @@
                                  <figure>
                                      <img src="${
                                        img.url
-                                     }" style="width:100%" alt="Image">
+                                     }" style="width:100%" alt="图片">
                                      <figcaption>${
                                        img.description || ""
                                      }</figcaption>
@@ -518,7 +518,7 @@
                 // const offsetTop = targetElement.offsetTop - 80; // 80px 是示例偏移量
                 // page.$el.find('.page-content')[0].scrollTo({ top: offsetTop, behavior: 'smooth' });
               } else {
-                console.warn(`Target element with ID '${targetId}' not found.`);
+                console.warn(`未找到ID为 '${targetId}' 的目标元素。`);
               }
             });
           });
@@ -558,9 +558,7 @@
               `https://lens.zhihu.com/api/v4/videos/${videoId}`
             );
             if (!videoRes.ok) {
-              throw new Error(
-                `Video API HTTP error! status: ${videoRes.status}`
-              );
+              throw new Error(`视频API HTTP错误！状态: ${videoRes.status}`);
             }
             const videoJson = await videoRes.json();
             const videoUrl =
@@ -575,12 +573,12 @@
               videoEl.innerHTML = "视频源加载失败";
             }
           } catch (err) {
-            console.error(`Failed to load video ${videoId}:`, err);
+            console.error(`加载视频失败 ${videoId}:`, err);
             videoEl.innerHTML = "视频加载失败";
           }
         });
       } catch (err) {
-        console.error("Failed to load content:", err);
+        console.error("加载内容失败:", err);
         dynamicContent.innerHTML =
           '<div class="block block-strong contents inset text-align-center">内容加载失败。</div>';
       }
@@ -612,59 +610,27 @@
         }
       }, 0);
 
-      // --- [NEW] Use CommentsComponent to fetch and log comments ---
+      // --- 评论加载逻辑 ---
       const commentsManager = CommentsComponent();
+      // 暴露到 window 对象，方便从控制台测试
+      window.commentsManager = commentsManager;
 
-      const logComments = async () => {
-        console.log(
-          `[Debug] Using CommentsComponent to fetch for ${pageType}/${pageid}...`
-        );
+      const initComments = async () => {
+        console.log(`[评论] 正在为 ${pageType}/${pageid} 初始化...`);
+        await commentsManager.init(pageType, pageid);
 
-        // 1. Fetch root comments using the component's logic
-        const rootResult = await commentsManager.fetchComments({
-          resourceType: pageType,
-          resourceId: pageid,
-        });
-
-        console.log(
-          "--- [Debug] Fetched Root Comments. Now fetching replies... ---"
-        );
-
-        // 2. Iterate and fetch child comments
-        for (const comment of rootResult.comments) {
-          if (comment.replies_count > 0) {
-            const childResult = await commentsManager.fetchComments({
-              commentId: comment.id,
-            });
-            // Attach children to the root comment object
-            comment.child_comments = childResult.comments;
-          }
-        }
-
-        console.log(
-          "\n--- [Debug] Simplified Comment Structure from Component ---"
-        );
-        // Simplify the output for clarity in the console
-        const simplifiedOutput = rootResult.comments.map((c) => ({
-          author_name: c.author_name,
-          content: c.content,
-          ip_location: c.ip_location,
-          like_count: c.like_count,
-          replies_count: c.replies_count,
-          child_comments: c.child_comments.map((child) => ({
-            author_name: child.author_name,
-            content: child.content,
-            reply_to_author: child.reply_to_author,
-          })),
-        }));
-        console.log(JSON.stringify(simplifiedOutput, null, 2));
-        console.log(
-          "---------------------------------------------------------\n"
-        );
+        console.log("[评论] 初始页已加载。");
+        console.log("当前根评论:", commentsManager.rootComments);
+        console.log("---");
+        // console.log(
+        //   "要在控制台加载下一页根评论，请运行:"
+        // );
+        // console.log("await window.commentsManager.loadMore()");
+        console.log("---");
       };
 
-      logComments();
-      // --- [END NEW] ---
+      initComments();
+      // --- [结束] ---
     });
 
     return $render;

@@ -1,4 +1,4 @@
-//imports
+// 导入
 const { createApp } = PetiteVue;
 import { unifiedFetch } from "./request.js";
 import { RecommendCards } from "./components/recommend.js";
@@ -36,7 +36,7 @@ function loadPetiteVue() {
 }
 loadPetiteVue();
 
-//错误处理
+// 错误处理
 window.onerror = function (message, source, lineno, colno, error) {
   alert(`${message}\n来源: ${source}\n行: ${lineno}, 列: ${colno}`);
 };
