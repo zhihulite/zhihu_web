@@ -128,7 +128,7 @@ export function CommentsComponent() {
         const res = await window.zhihu.get(url);
 
         // 跳过父评论
-        // const commentsData = commentId ? res.data.slice(1) : res.data;
+        const commentsData = commentId ? res.data.slice(1) : res.data;
 
         return {
           comments: commentsData.map(format),
