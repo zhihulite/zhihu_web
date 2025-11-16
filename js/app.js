@@ -1,3 +1,11 @@
+if (!typeof GM_xmlhttpRequest === 'function') {
+	alert('未检测到油猴（Tampermonkey环境！');
+	window.location.href = 'https://greasyfork.org/scripts/508709';
+}
+if (window.innerWidth >= 768) {
+	alert('请在移动端设备上使用本页面以获得最佳体验。即将跳转到pc端页面');
+	window.location.href = 'https://zhihulite.github.io/zhihu_webpc/';
+}
 // 导入
 const { createApp } = PetiteVue;
 import { unifiedFetch } from "./request.js";
