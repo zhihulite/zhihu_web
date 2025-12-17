@@ -1,0 +1,1 @@
+const e=[{id:`1`,title:`Example Article 1`,excerpt:`This is a summary.`,type:`article`,metrics:{comments:10,likes:20}},{id:`2`,title:`Example Article 2`,excerpt:`Another summary.`,type:`article`,metrics:{comments:5,likes:10}}],t=[...e],n=[...e],r=[...e];export{t as n,r,n as t};

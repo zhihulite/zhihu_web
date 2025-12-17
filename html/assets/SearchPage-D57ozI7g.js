@@ -1,0 +1,1 @@
+import{l as e,t,x as n}from"./_plugin-vue_export-helper-DKZfpah6.js";var r={},i={class:`search-page`};function a(t,r){return n(),e(`div`,i,`Search`)}var o=t(r,[[`render`,a]]);export{o as default};
