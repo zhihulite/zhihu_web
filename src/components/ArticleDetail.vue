@@ -170,7 +170,7 @@ onMounted(() => {
 
             <div class="content-wrapper">
                 <f7-card class="author-card" @click="f7router.navigate(`/user/${item.authorId}`)">
-                    <f7-card-content padding="false" class="display-flex align-items-center padding">
+                    <f7-card-content class="display-flex align-items-center padding">
                         <img :src="item.avatarUrl" class="card-avatar" />
                         <div class="card-info margin-left">
                             <div class="card-name">{{ item.author }}</div>
