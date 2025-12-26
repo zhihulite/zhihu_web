@@ -199,12 +199,12 @@ onMounted(() => {
                 <ContentRenderer :segments="item.structured_content" @imageClick="handleImageClick" />
 
                 <div v-if="imageList.length > 0" class="image-gallery margin-top">
-                    <f7-swiper pagination>
-                        <f7-swiper-slide v-for="(img, index) in imageList" :key="index">
+                    <swiper-container pagination>
+                        <swiper-slide v-for="(img, index) in imageList" :key="index">
                             <img :src="img.url" style="width:100%; object-fit:contain; cursor: pointer;"
                                 @click="handleGalleryImageClick(index)" />
-                        </f7-swiper-slide>
-                    </f7-swiper>
+                        </swiper-slide>
+                    </swiper-container>
                 </div>
             </div>
         </f7-page-content>
