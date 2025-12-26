@@ -68,25 +68,18 @@ const parts = computed(() => {
 
 <style scoped>
 .styled-link {
-    color: var(--md-sys-color-primary);
     text-decoration: underline;
-    text-decoration-color: rgba(var(--md-sys-color-primary), 0.3);
     text-underline-offset: 2px;
     transition: color 0.2s;
 }
 
-.styled-link:hover {
-    text-decoration-color: var(--md-sys-color-primary);
-}
 
 .styled-bold {
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
 }
 
 .styled-italic {
     font-style: italic;
-    color: var(--md-sys-color-on-surface-variant);
 }
 
 .styled-highlight {

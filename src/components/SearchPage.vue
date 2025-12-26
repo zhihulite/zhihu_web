@@ -420,7 +420,6 @@ const handleTabLoadMore = async (tabId) => {
     padding: 8px;
     gap: 8px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    background-color: #fff;
     z-index: 10;
 }
 
@@ -432,7 +431,6 @@ const handleTabLoadMore = async (tabId) => {
 .default-container {
     flex: 1;
     height: calc(100% - 64px);
-    background-color: #fafafa;
 }
 
 

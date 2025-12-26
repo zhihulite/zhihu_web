@@ -44,7 +44,6 @@ defineProps({
 .history-view {
     width: 100%;
     height: 100%;
-    background-color: var(--md-sys-color-surface);
 }
 
 .container {
@@ -67,7 +66,6 @@ defineProps({
 .title {
     font-size: 1.875rem;
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
 }
 
 .content {
@@ -88,7 +86,6 @@ defineProps({
     align-items: center;
     justify-content: center;
     height: 256px;
-    color: var(--md-sys-color-on-surface-variant);
     opacity: 0.5;
 }
 

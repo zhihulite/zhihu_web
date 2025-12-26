@@ -123,14 +123,12 @@ const getCardInfo = (segment) => {
 
 <style scoped>
 .content-renderer {
-    color: var(--md-sys-color-on-surface);
     line-height: 1.8;
 }
 
 .paragraph {
     font-size: 17px;
     line-height: 1.8;
-    color: rgba(var(--md-sys-color-on-surface), 0.9);
     margin-bottom: 24px;
     letter-spacing: 0.01em;
 }
@@ -139,10 +137,8 @@ const getCardInfo = (segment) => {
     scroll-margin-top: 80px;
     font-size: 1.25rem;
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
     margin-top: 32px;
     margin-bottom: 16px;
-    border-left: 4px solid var(--md-sys-color-primary);
     padding-left: 12px;
 }
 
@@ -156,14 +152,11 @@ const getCardInfo = (segment) => {
     position: absolute;
     top: 0;
     left: 0;
-    color: rgba(var(--md-sys-color-primary), 0.2);
 }
 
 .blockquote {
     font-size: 1.125rem;
     font-style: italic;
-    color: var(--md-sys-color-on-surface-variant);
-    border-left: 2px solid rgba(var(--md-sys-color-primary), 0.3);
     padding-left: 16px;
     margin: 0;
 }
@@ -213,10 +206,6 @@ const getCardInfo = (segment) => {
     list-style-type: decimal;
 }
 
-.list-node::marker {
-    color: var(--md-sys-color-primary);
-}
-
 .image-figure {
     margin: 24px 0;
 }
@@ -224,7 +213,6 @@ const getCardInfo = (segment) => {
 .article-image {
     width: 100%;
     border-radius: 12px;
-    background-color: var(--md-sys-color-surface-container);
     display: block;
     cursor: pointer;
 }
@@ -232,7 +220,6 @@ const getCardInfo = (segment) => {
 .image-caption {
     text-align: center;
     font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface-variant);
     margin-top: 8px;
 }
 
@@ -240,17 +227,11 @@ const getCardInfo = (segment) => {
     display: flex;
     align-items: center;
     gap: 16px;
-    background-color: var(--md-sys-color-surface-container-low);
     border-radius: 12px;
     padding: 12px;
     margin: 16px 0;
-    border: 1px solid var(--md-sys-color-outline-variant);
     text-decoration: none;
     transition: background-color 0.2s;
-}
-
-.link-card:hover {
-    background-color: var(--md-sys-color-surface-container);
 }
 
 .card-content {
@@ -260,7 +241,6 @@ const getCardInfo = (segment) => {
 
 .card-title {
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
     margin: 0;
     overflow: hidden;
     white-space: nowrap;
@@ -268,13 +248,8 @@ const getCardInfo = (segment) => {
     font-size: 1rem;
 }
 
-.link-card:hover .card-title {
-    color: var(--md-sys-color-primary);
-}
-
 .card-desc {
     font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface-variant);
     margin: 4px 0 8px;
     overflow: hidden;
     white-space: nowrap;
@@ -286,7 +261,6 @@ const getCardInfo = (segment) => {
     align-items: center;
     gap: 4px;
     font-size: 0.75rem;
-    color: var(--md-sys-color-outline);
 }
 
 .card-cover {
@@ -314,8 +288,6 @@ const getCardInfo = (segment) => {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    background-color: rgba(var(--md-sys-color-secondary-container), 0.3);
-    color: var(--md-sys-color-secondary);
     border-radius: 12px;
     padding: 16px;
     margin: 16px 0;
@@ -329,7 +301,6 @@ const getCardInfo = (segment) => {
 .hr-divider {
     margin: 32px 0;
     border: none;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
     opacity: 0.5;
 }
 </style>

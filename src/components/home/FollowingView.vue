@@ -47,7 +47,6 @@ const handleRefresh = async () => {
 .following-view {
     height: 100%;
     width: 100%;
-    background-color: var(--md-sys-color-surface);
 }
 
 .container {
@@ -61,7 +60,6 @@ const handleRefresh = async () => {
 .page-title {
     font-size: 1.875rem;
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
     margin: 0;
     padding: 16px 24px 8px;
     flex-shrink: 0;

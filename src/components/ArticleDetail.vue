@@ -256,7 +256,6 @@ onMounted(() => {
 .article-detail {
     height: 100%;
     width: 100%;
-    background-color: var(--md-sys-color-surface);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -272,7 +271,6 @@ onMounted(() => {
 .glass {
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.1);
 }
 
 .top-bar {
@@ -323,7 +321,6 @@ onMounted(() => {
     padding: 12px 16px;
     font-size: 0.875rem;
     font-weight: bold;
-    background-color: var(--md-sys-color-surface-container-low);
 }
 
 .toc-list {
@@ -338,10 +335,6 @@ onMounted(() => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.toc-item:hover {
-    background-color: var(--md-sys-color-surface-container);
 }
 
 .main-scroll {
@@ -364,7 +357,6 @@ onMounted(() => {
 .hero-gradient {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, var(--md-sys-color-surface), transparent);
     opacity: 0.8;
 }
 
@@ -378,14 +370,12 @@ onMounted(() => {
 .article-title {
     font-size: 1.2rem;
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
 }
 
 .meta-info {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--md-sys-color-on-surface-variant);
     font-size: 0.875rem;
     margin-bottom: 24px;
 }
@@ -393,7 +383,6 @@ onMounted(() => {
 .article-content {
     font-size: 1.125rem;
     line-height: 1.8;
-    color: var(--md-sys-color-on-surface);
 }
 
 .article-content :deep(img) {
@@ -432,7 +421,6 @@ onMounted(() => {
 
 .card-desc {
     font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface-variant);
 }
 
 .bottom-float-container {
@@ -470,7 +458,6 @@ onMounted(() => {
 .action-count {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--md-sys-color-on-surface-variant);
     margin-left: 2px;
     min-width: 20px;
 }
@@ -478,12 +465,10 @@ onMounted(() => {
 .vertical-divider {
     width: 1px;
     height: 20px;
-    background-color: var(--md-sys-color-outline-variant);
     margin: 0 4px;
 }
 
 .toc-card {
-    background-color: var(--md-sys-color-surface-container-low);
     padding: 16px;
     border-radius: 12px;
     margin: 16px 0 24px 0;
@@ -495,15 +480,12 @@ onMounted(() => {
     font-weight: bold;
     margin-bottom: 12px;
     font-size: 1rem;
-    color: var(--md-sys-color-on-surface);
 }
 
 .toc-link {
     padding: 8px 0;
     font-size: 0.9rem;
-    color: var(--md-sys-color-primary);
     cursor: pointer;
-    border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.2);
 }
 
 .toc-link:last-child {
@@ -516,16 +498,9 @@ onMounted(() => {
     justify-content: center;
     padding-top: 12px;
     font-size: 0.875rem;
-    color: var(--md-sys-color-primary);
     cursor: pointer;
-    border-top: 1px solid rgba(var(--md-sys-color-outline-variant), 0.2);
     margin-top: 8px;
     transition: background-color 0.2s;
-}
-
-.toc-toggle:hover {
-    background-color: var(--md-sys-color-surface-container);
-    border-radius: 8px;
 }
 
 .toggle-icon {

@@ -20,7 +20,7 @@ const NAV_ITEMS = [
     { id: 'home', label: '主页', path: '/', icon: { ios: 'f7:house_fill', md: 'material:home' } },
     { id: 'following', label: '关注', path: '/following', icon: { ios: 'f7:person_2_fill', md: 'material:people' } },
     { id: 'collections', label: '收藏', path: '/collections', icon: { ios: 'f7:bookmark_fill', md: 'material:bookmark' } },
-    { id: 'daily', label: '日报', path: '/daily', icon: { ios: 'f7:newspaper_fill', md: 'material:article' } },
+    { id: 'daily', label: '日报', path: '/daily', icon: { ios: 'f7:doc_plaintext', md: 'material:article' } },
     { id: 'history', label: '历史', path: '/history', icon: { ios: 'f7:clock_fill', md: 'material:history' } },
     { id: 'settings', label: '设置', path: '/settings', icon: { ios: 'f7:gear_fill', md: 'material:settings' } }
 ];

@@ -296,9 +296,9 @@ const getTabLinkClass = (id) => {
                 @click="activeTab = 'following'" icon-ios="f7:person_2_fill" icon-md="material:group"
                 text="关注"></f7-link>
             <f7-link tab-link="#tab-hot" :tab-link-active="activeTab === 'hot'" @click="activeTab = 'hot'"
-                icon-ios="flame_fill" icon-md="material:local_fire_department" text="热榜"></f7-link>
+                icon-ios="f7:flame_fill" icon-md="material:local_fire_department" text="热榜"></f7-link>
             <f7-link tab-link="#tab-thoughts" :tab-link-active="activeTab === 'thoughts'"
-                @click="activeTab = 'thoughts'" icon-ios="lightbulb_fill" icon-md="material:bubble_chart"
+                @click="activeTab = 'thoughts'" icon-ios="f7:lightbulb_fill" icon-md="material:bubble_chart"
                 text="想法"></f7-link>
         </f7-toolbar>
 

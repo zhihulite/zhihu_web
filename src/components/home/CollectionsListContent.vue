@@ -30,14 +30,9 @@ defineProps(['onRefresh'])
     display: flex;
     gap: 16px;
     padding: 16px;
-    background-color: var(--md-sys-color-surface-container-low);
     border-radius: 12px;
     cursor: pointer;
     transition: background-color 0.2s;
-}
-
-.list-item:hover {
-    background-color: var(--md-sys-color-surface-container);
 }
 
 .avatar-container {
@@ -64,13 +59,11 @@ defineProps(['onRefresh'])
 
 .item-title {
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
     margin: 0;
 }
 
 .item-sub {
     font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface-variant);
     margin-top: 4px;
 }
 </style>

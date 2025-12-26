@@ -163,7 +163,7 @@ onMounted(() => {
                                     style="border-radius: 50%;"
                                     :onerror="`this.src='https://placehold.co/24x24/6366f1/ffffff?text=U'`" />
                                 <span class="answer-author-name font-weight-bold margin-left-half">{{ answer.author
-                                    }}</span>
+                                }}</span>
                             </div>
 
                             <div class="answer-excerpt text-color-gray">
@@ -383,7 +383,6 @@ onMounted(() => {
 }
 
 .metric-item.primary {
-    color: var(--md-sys-color-primary);
     opacity: 0.8;
 }
 

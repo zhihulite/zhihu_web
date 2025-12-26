@@ -31,7 +31,6 @@ defineProps({
 .daily-view {
     width: 100%;
     height: 100%;
-    background-color: var(--md-sys-color-surface);
 }
 
 .container {

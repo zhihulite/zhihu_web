@@ -26,19 +26,13 @@ defineProps(['data', 'onArticleClick', 'onRefresh'])
 
 .question-item {
     padding: 16px;
-    background-color: var(--md-sys-color-surface-container-low);
     border-radius: 12px;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
-.question-item:hover {
-    background-color: var(--md-sys-color-surface-container);
-}
-
 .title {
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
     margin-bottom: 8px;
 }
 
@@ -46,6 +40,5 @@ defineProps(['data', 'onArticleClick', 'onRefresh'])
     display: flex;
     gap: 16px;
     font-size: 0.75rem;
-    color: var(--md-sys-color-on-surface-variant);
 }
 </style>
