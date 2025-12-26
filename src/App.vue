@@ -1,18 +1,29 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute, RouterView } from 'vue-router';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { f7App, f7Panel, f7View, f7Page, f7 } from 'framework7-vue';
 import AdaptiveNavigation from './components/AdaptiveNavigation.vue';
-import TopBar from './components/TopBar.vue';
 import MoreMenuDialog from './components/MoreMenuDialog.vue';
 import { logout } from './api/auth.js';
 import { useUser } from '@/composables/userManager';
+import routes from './f7-routes.js';
 
-const router = useRouter();
-const route = useRoute();
 const { resetUser, refreshUser } = useUser();
 
 const isMoreDialogOpen = ref(false);
 const isMobile = ref(false);
+
+// Framework7 Parameters
+const f7params = {
+  name: 'Zhihu Lite',
+  theme: 'auto',
+  routes: routes, // Pass routes here
+  colors: {
+    primary: '#0066ff',
+  },
+  serviceWorker: process.env.NODE_ENV === 'production' ? {
+    path: '/service-worker.js',
+  } : {},
+};
 
 const checkIsMobile = () => {
   if (typeof window !== 'undefined') {
@@ -33,9 +44,11 @@ const handleLogout = () => {
   if (window.confirm("确定要退出登录吗？")) {
     logout().then(() => {
       resetUser();
-      // 刷新用户数据为游客数据
       refreshUser();
-      router.push('/');
+      const router = (f7 && f7.views && f7.views.main && f7.views.main.router);
+      if (router) {
+        router.navigate('/', { clearPreviousHistory: true });
+      }
     });
   }
 };
@@ -43,68 +56,28 @@ const handleLogout = () => {
 const handleCloseMoreDialog = () => {
   isMoreDialogOpen.value = false;
 };
-
-const isFullScreenRoute = computed(() => {
-  const path = route.path;
-  return path.startsWith('/article/') ||
-    path.startsWith('/question/') ||
-    path.startsWith('/user/') ||
-    path.startsWith('/topic/') ||
-    path === '/search';
-});
 </script>
 
 <template>
-  <s-page theme="auto" class="app-page">
-    <s-drawer class="app-drawer">
-      <div slot="start" :style="{ width: isMobile ? '280px' : 'auto' }">
-        <AdaptiveNavigation :onLogout="handleLogout" :onMoreClick="() => isMoreDialogOpen = true" />
-      </div>
+  <f7-app v-bind="f7params">
+    <!-- Main View -->
+    <f7-view main class="safe-areas" url="/"></f7-view>
 
-      <div class="main-content">
-        <div v-if="!isFullScreenRoute">
-          <TopBar />
-        </div>
-
-        <div class="view-container">
-          <RouterView v-slot="{ Component, route }">
-            <KeepAlive>
-              <component :is="Component" v-if="route.meta.keepAlive" :key="route.path" />
-            </KeepAlive>
-            <component :is="Component" v-if="!route.meta.keepAlive" :key="route.path" />
-          </RouterView>
-        </div>
-      </div>
-    </s-drawer>
+    <!-- Left Panel / Drawer -->
+    <f7-panel left cover :visible-breakpoint="768" resizable>
+      <f7-view>
+        <f7-page>
+          <AdaptiveNavigation :onLogout="handleLogout" :onMoreClick="() => isMoreDialogOpen = true" />
+        </f7-page>
+      </f7-view>
+    </f7-panel>
 
     <MoreMenuDialog :isOpen="isMoreDialogOpen" :onClose="handleCloseMoreDialog" />
-  </s-page>
+  </f7-app>
 </template>
 
-<style scoped>
-.app-page {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-.app-drawer {
-  height: 100%;
-  width: 100%;
-}
-
-.main-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  position: relative;
-  z-index: 0;
-}
-
-.view-container {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
+<style>
+:root {
+  --f7-theme-color: #0b87ff;
 }
 </style>

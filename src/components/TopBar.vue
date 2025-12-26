@@ -1,22 +1,16 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import MaterialSymbol from './MaterialSymbol.vue'
 import LoginDialog from './LoginDialog.vue'
 import { useUser } from '@/composables/userManager'
 
-const router = useRouter()
+const props = defineProps({
+    f7router: Object
+})
+
 const showLogin = ref(false)
 
-const toggleDrawer = () => {
-    const drawer = document.querySelector('s-drawer')
-    if (drawer && typeof drawer.toggle === 'function') {
-        drawer.toggle()
-    }
-}
-
 const navigateToSearch = () => {
-    router.push('/search')
+    if (props.f7router) props.f7router.navigate('/search')
 }
 
 const handleAvatarClick = () => {
@@ -27,11 +21,11 @@ const handleAvatarClick = () => {
 
 
 const {
-  currentUser,
-  isLoggedIn,
-  isRefreshing,
-  refreshUser,
-  onUserUpdate
+    currentUser,
+    isLoggedIn,
+    isRefreshing,
+    refreshUser,
+    onUserUpdate
 } = useUser()
 
 // 订阅用户数据更新
@@ -59,44 +53,51 @@ const onLoginSuccess = () => {
 </script>
 
 <template>
-    <s-appbar style="width: 100%; z-index: 0;">
-        <s-icon-button slot="navigation" @click="toggleDrawer">
-            <MaterialSymbol icon="menu" />
-        </s-icon-button>
+    <f7-navbar>
+        <f7-nav-left>
+            <f7-link icon-only panel-open="left">
+                <f7-icon ios="f7:menu" md="material:menu" />
+            </f7-link>
+        </f7-nav-left>
 
-        <div slot="headline" class="headline">
+        <f7-nav-title>
             Zyphron
-        </div>
+        </f7-nav-title>
 
-        <s-search slot="search" placeholder="搜索关键字..." readonly @click="navigateToSearch"
-            style="cursor: pointer;"></s-search>
+        <f7-nav-right>
+            <f7-link @click="navigateToSearch" class="search-link" icon-only>
+                <f7-icon ios="f7:search" md="material:search" />
+            </f7-link>
 
-        <div slot="action" class="action-container">
-            <s-icon-button class="desktop-only">
-                <MaterialSymbol icon="notifications" />
-            </s-icon-button>
+            <f7-link icon-only class="desktop-only">
+                <f7-icon ios="f7:bell" md="material:notifications" />
+            </f7-link>
 
-            <s-icon-button class="tablet-only">
-                <MaterialSymbol icon="chat_bubble" />
-            </s-icon-button>
-            <s-avatar :src="currentUser?.avatar_url" class="avatar" @click="handleAvatarClick">
-                <span v-if="!isLoggedIn">游客</span>
-            </s-avatar>
-        </div>
-    </s-appbar>
+            <f7-link icon-only class="tablet-only">
+                <f7-icon ios="f7:chat_bubble" md="material:chat_bubble" />
+            </f7-link>
+
+            <f7-link @click="handleAvatarClick" class="avatar-link">
+                <img v-if="currentUser?.avatar_url" :src="currentUser.avatar_url" class="avatar-img" />
+                <span v-else class="guest-label">游客</span>
+            </f7-link>
+        </f7-nav-right>
+    </f7-navbar>
+
     <LoginDialog v-model="showLogin" @login-success="onLoginSuccess" />
 </template>
 
 <style scoped>
-.action-container {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+.avatar-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
-.avatar {
-    margin-left: 8px;
-    cursor: pointer;
+.guest-label {
+    font-size: 14px;
+    font-weight: 500;
 }
 
 @media (max-width: 768px) {

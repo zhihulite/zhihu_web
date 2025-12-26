@@ -1,6 +1,5 @@
 <script setup>
 import FeedCard from '../FeedCard.vue';
-import PullToRefresh from '../PullToRefresh.vue';
 
 defineProps({
     data: Array,
@@ -18,13 +17,11 @@ defineProps({
                 <p class="subtitle">为您精选的故事</p>
             </div>
             <div class="content">
-                <PullToRefresh :onRefresh="onRefresh">
-                    <div class="card-grid">
-                        <div class="masonry-item" v-for="(item, index) in data" :key="item.id + '-' + index">
-                            <FeedCard :item="item" @click="onArticleClick(item)" @commentClick="onCommentClick" />
-                        </div>
+                <div class="card-grid">
+                    <div class="masonry-item" v-for="(item, index) in data" :key="item.id + '-' + index">
+                        <FeedCard :item="item" @click="onArticleClick(item)" @commentClick="onCommentClick" />
                     </div>
-                </PullToRefresh>
+                </div>
             </div>
         </div>
     </div>

@@ -1,13 +1,28 @@
 <script setup>
+import { computed } from 'vue';
 import RenderStyledText from './RenderStyledText.vue';
-import MaterialSymbol from './MaterialSymbol.vue';
 
-defineProps({
+
+const props = defineProps({
     segments: {
         type: Array,
         default: () => []
     }
 });
+
+const emit = defineEmits(['imageClick']);
+
+const allImageUrls = computed(() => {
+    return props.segments
+        .filter(seg => seg.type === 'image')
+        .map(seg => seg.image.urls?.[0])
+        .filter(url => !!url);
+});
+
+const handleImageClick = (url) => {
+    const index = allImageUrls.value.indexOf(url);
+    emit('imageClick', { url, index, allUrls: allImageUrls.value });
+};
 
 const getCardInfo = (segment) => {
     if (!segment.card) return {};
@@ -42,7 +57,7 @@ const getCardInfo = (segment) => {
             <!-- Blockquote -->
             <div v-else-if="segment.type === 'blockquote'" class="blockquote-wrapper">
                 <div class="quote-icon">
-                    <MaterialSymbol icon="format_quote" :size="24" fill />
+                    <f7-icon ios="f7:quote_bubble_fill" md="material:format_quote" size="24" />
                 </div>
                 <blockquote class="blockquote">
                     <RenderStyledText :text="segment.blockquote.text" :marks="segment.blockquote.marks" />
@@ -62,10 +77,9 @@ const getCardInfo = (segment) => {
                 </li>
             </component>
 
-            <!-- Image -->
             <figure v-else-if="segment.type === 'image'" class="image-figure">
                 <img :src="segment.image.urls?.[0]" :alt="segment.image.description || 'Article Image'"
-                    class="article-image" loading="lazy" />
+                    class="article-image" loading="lazy" @click="handleImageClick(segment.image.urls?.[0])" />
                 <figcaption v-if="segment.image.description" class="image-caption">
                     {{ segment.image.description }}
                 </figcaption>
@@ -78,7 +92,7 @@ const getCardInfo = (segment) => {
                     <h4 class="card-title">{{ getCardInfo(segment).title }}</h4>
                     <p class="card-desc">{{ getCardInfo(segment).desc }}</p>
                     <div class="card-meta">
-                        <MaterialSymbol icon="open_in_new" :size="12" />
+                        <f7-icon ios="f7:arrow_up_right_square" md="material:open_in_new" size="12" />
                         <span>Link Card</span>
                     </div>
                 </div>
@@ -95,7 +109,7 @@ const getCardInfo = (segment) => {
             <!-- MyAppTip -->
             <div v-else-if="segment.type === 'myapptip'" class="app-tip">
                 <div class="tip-icon">
-                    <MaterialSymbol icon="info" :size="20" />
+                    <f7-icon ios="f7:info_circle" md="material:info" size="20" />
                 </div>
                 <div>{{ segment.myapptip.text }}</div>
             </div>
@@ -212,6 +226,7 @@ const getCardInfo = (segment) => {
     border-radius: 12px;
     background-color: var(--md-sys-color-surface-container);
     display: block;
+    cursor: pointer;
 }
 
 .image-caption {

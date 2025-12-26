@@ -1,16 +1,17 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import TopBar from '../TopBar.vue';
 import FeedCard from '../FeedCard.vue';
 import HotListCard from '../HotListCard.vue';
-import PullToRefresh from '../PullToRefresh.vue';
-import MobileTabLayout from '../MobileTabLayout.vue';
-import MaterialSymbol from '../MaterialSymbol.vue';
+import TabLayout from '../TabLayout.vue';
 import { THOUGHTS_DATA, DAILY_DATA } from '../../services/mockData';
 import $http from '../../api/http.js';
 import { homeCardRender } from '../../services/homeCardRender.js';
 
-const router = useRouter();
+const props = defineProps({
+    f7router: Object
+});
+
 const isMobile = ref(false);
 
 const activeTab = ref('recommend');
@@ -55,15 +56,14 @@ const handleArticleClick = (item) => {
     const id = homeCardRender.getId(item);
 
     if (type == "question") {
-        router.push(`/question/${item.id}`);
+        props.f7router.navigate(`/question/${item.id}`);
     } else {
-        router.push(`/article/${type}/${id}`);
+        props.f7router.navigate(`/article/${type}/${id}`);
     }
-
 };
 
 const handleUserClick = (userId) => {
-    router.push(`/user/${userId}`);
+    props.f7router.navigate(`/user/${userId}`);
 };
 
 
@@ -116,7 +116,7 @@ const fetchHotData = async () => {
 
     try {
         const url = 'https://api.zhihu.com/topstory/hot-lists/total?limit=50&mobile=true';
-        const res = await $zhihu.get(url);
+        const res = await $http.get(url);
 
         const list = (res.data || []).map((item, i) => {
             const target = item.target || {};
@@ -145,20 +145,43 @@ const fetchHotData = async () => {
     }
 };
 
-const onRefresh = async () => {
-    if (activeTab.value === 'recommend') {
-        await fetchRecommendData(true);
-    } else if (activeTab.value === 'hot') {
-        await fetchHotData();
-    } else {
-        await new Promise(r => setTimeout(r, 1000));
+const onRecommendRefresh = async (done) => {
+    await fetchRecommendData(true);
+    done();
+};
+
+const onRecommendInfinite = () => {
+    if (hasMoreRecommend.value && !isRecommendLoading.value) {
+        fetchRecommendData(false);
     }
 };
 
-const onLoadMore = () => {
-    if (activeTab.value === 'recommend' && hasMoreRecommend.value) {
-        fetchRecommendData(false);
-    }
+const onHotRefresh = async (done) => {
+    await fetchHotData();
+    done();
+};
+
+const onFollowingRefresh = async (done) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    done();
+};
+
+const onThoughtsRefresh = async (done) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    done();
+};
+
+const onFollowingInfinite = () => {
+    console.log('Loading more following content...');
+    // Mock loading more for demonstration
+};
+
+const onHotInfinite = () => {
+    console.log('Loading more hot content...');
+};
+
+const onThoughtsInfinite = () => {
+    console.log('Loading more thoughts...');
 };
 
 watch(activeTab, (newTab) => {
@@ -167,145 +190,123 @@ watch(activeTab, (newTab) => {
     }
 });
 
+const getTabLinkClass = (id) => {
+    return activeTab.value === id ? 'tab-link-active' : '';
+}
 </script>
 
 <template>
-    <div class="home-view" :class="{ 'is-mobile': isMobile, 'is-desktop': !isMobile }">
-        <div v-if="!isMobile" class="desktop-header">
-            <s-tab style="justify-content: center;">
-                <s-tab-item v-for="tab in tabs" :key="tab.id" :selected="activeTab === tab.id"
-                    @click="activeTab = tab.id">
-                    <div slot="text">{{ tab.label }}</div>
-                </s-tab-item>
-            </s-tab>
-        </div>
+    <!-- 不使用:page-content='false' 使用后处理双重tab较麻烦 -->
+    <f7-page name="home">
+        <!-- Using TopBar here -->
+        <template #fixed>
+            <TopBar :f7router="f7router" />
 
-        <div class="content-area">
+            <!-- Desktop Tabbar -->
+            <f7-toolbar tabbar top v-if="!isMobile">
+                <f7-link tab-link="#tab-recommend" :tab-link-active="activeTab === 'recommend'"
+                    @click="activeTab = 'recommend'">推荐</f7-link>
+                <f7-link tab-link="#tab-following" :tab-link-active="activeTab === 'following'"
+                    @click="activeTab = 'following'">关注</f7-link>
+                <f7-link tab-link="#tab-hot" :tab-link-active="activeTab === 'hot'"
+                    @click="activeTab = 'hot'">热榜</f7-link>
+                <f7-link tab-link="#tab-thoughts" :tab-link-active="activeTab === 'thoughts'"
+                    @click="activeTab = 'thoughts'">想法</f7-link>
+            </f7-toolbar>
+        </template>
 
-            <div v-show="activeTab === 'recommend'" class="tab-content">
-                <PullToRefresh :onRefresh="onRefresh" :onLoadMore="hasMoreRecommend ? onLoadMore : null">
+        <f7-tabs class="tabs-auto-page-content" animated>
+            <f7-tab id="tab-recommend" tab-active>
+                <f7-page-content ptr @ptr:refresh="onRecommendRefresh" infinite @infinite="onRecommendInfinite">
                     <div class="card-grid">
                         <div class="masonry-item" v-for="(item, index) in recommendList" :key="item.id + '-' + index">
                             <FeedCard :item="item" @click="handleArticleClick(item)" @userClick="handleUserClick" />
                         </div>
-                        <div class="load-more">
-                            <div v-if="!hasMoreRecommend && recommendList.length > 0" class="end-marker">没有更多内容了</div>
-                        </div>
                     </div>
-                </PullToRefresh>
-            </div>
+                    <div class="load-more block text-align-center" v-if="!hasMoreRecommend && recommendList.length > 0">
+                        <span class="text-color-gray">没有更多内容了</span>
+                    </div>
+                </f7-page-content>
+            </f7-tab>
 
-            <div v-show="activeTab === 'following'" class="tab-content">
-                <MobileTabLayout :tabs="followingTabs" :activeId="homeFollowingTab"
-                    :onChange="(id) => homeFollowingTab = id">
+            <f7-tab id="tab-following">
+                <TabLayout :tabs="followingTabs" :activeId="homeFollowingTab" :onChange="(id) => homeFollowingTab = id"
+                    :nested="true">
                     <template #selected>
-                        <PullToRefresh :onRefresh="onRefresh">
+                        <f7-page-content ptr @ptr:refresh="onFollowingRefresh" infinite @infinite="onFollowingInfinite">
                             <div class="card-grid">
-                                <div v-for="(item, index) in recommendList.slice(0, 2)" :key="'sel-' + index"
-                                    class="masonry-item">
-                                    <FeedCard :item="item" @click="handleArticleClick(item)"
-                                        @userClick="handleUserClick" />
-                                </div>
+                                <template v-for="(item, index) in recommendList.slice(0, 2)" :key="'sel-' + index">
+                                    <div class="masonry-item">
+                                        <FeedCard :item="item" @click="handleArticleClick(item)"
+                                            @userClick="handleUserClick" />
+                                    </div>
+                                </template>
                             </div>
-                        </PullToRefresh>
+                        </f7-page-content>
                     </template>
                     <template #latest>
-                        <PullToRefresh :onRefresh="onRefresh">
+                        <f7-page-content ptr @ptr:refresh="onFollowingRefresh" infinite @infinite="onFollowingInfinite">
                             <div class="list-layout">
                                 <FeedCard v-for="(item, index) in dailyList" :key="'lat-' + index" :item="item"
                                     @click="handleArticleClick(item)" />
-                                <div class="end-marker">已加载全部最新内容</div>
+                                <div class="padding text-align-center text-color-gray">已加载全部最新内容</div>
                             </div>
-                        </PullToRefresh>
+                        </f7-page-content>
                     </template>
                     <template #thoughts>
-                        <PullToRefresh :onRefresh="onRefresh">
+                        <f7-page-content ptr @ptr:refresh="onFollowingRefresh" infinite @infinite="onFollowingInfinite">
                             <div class="card-grid">
                                 <div v-for="item in THOUGHTS_DATA" :key="item.id" class="masonry-item">
                                     <FeedCard :item="item" isThought @click="handleArticleClick(item)"
                                         @userClick="handleUserClick" />
                                 </div>
                             </div>
-                        </PullToRefresh>
+                        </f7-page-content>
                     </template>
-                </MobileTabLayout>
-            </div>
+                </TabLayout>
+            </f7-tab>
 
-            <div v-show="activeTab === 'hot'" class="tab-content">
-                <PullToRefresh :onRefresh="onRefresh">
+            <f7-tab id="tab-hot">
+                <f7-page-content ptr @ptr:refresh="onHotRefresh" style="padding-top: 0">
                     <div class="list-layout">
                         <HotListCard v-for="(item, index) in hotList" :key="item.id" :item="item" :rank="index + 1"
                             @click="handleArticleClick(item)" />
                     </div>
-                </PullToRefresh>
-            </div>
+                </f7-page-content>
+            </f7-tab>
 
-            <div v-show="activeTab === 'thoughts'" class="tab-content">
-                <PullToRefresh :onRefresh="onRefresh">
+            <f7-tab id="tab-thoughts">
+                <f7-page-content ptr @ptr:refresh="onThoughtsRefresh" infinite @infinite="onThoughtsInfinite"
+                    style="padding-top: 0">
                     <div class="card-grid">
                         <div v-for="item in THOUGHTS_DATA" :key="'t-' + item.id" class="masonry-item">
                             <FeedCard :item="item" isThought @click="handleArticleClick(item)"
                                 @userClick="handleUserClick" />
                         </div>
                     </div>
-                </PullToRefresh>
-            </div>
+                </f7-page-content>
+            </f7-tab>
+        </f7-tabs>
 
-        </div>
+        <!-- Mobile Tabbar -->
+        <f7-toolbar tabbar bottom icons v-if="isMobile">
+            <f7-link tab-link="#tab-recommend" :tab-link-active="activeTab === 'recommend'"
+                @click="activeTab = 'recommend'" icon-ios="f7:house_fill" icon-md="material:home" text="推荐"></f7-link>
+            <f7-link tab-link="#tab-following" :tab-link-active="activeTab === 'following'"
+                @click="activeTab = 'following'" icon-ios="f7:person_2_fill" icon-md="material:group"
+                text="关注"></f7-link>
+            <f7-link tab-link="#tab-hot" :tab-link-active="activeTab === 'hot'" @click="activeTab = 'hot'"
+                icon-ios="flame_fill" icon-md="material:local_fire_department" text="热榜"></f7-link>
+            <f7-link tab-link="#tab-thoughts" :tab-link-active="activeTab === 'thoughts'"
+                @click="activeTab = 'thoughts'" icon-ios="lightbulb_fill" icon-md="material:bubble_chart"
+                text="想法"></f7-link>
+        </f7-toolbar>
 
-        <div v-if="isMobile" class="mobile-nav">
-            <s-navigation mode="bottom">
-                <s-navigation-item v-for="tab in tabs" :key="tab.id" :selected="activeTab === tab.id"
-                    @click="activeTab = tab.id">
-                    <MaterialSymbol slot="icon" :icon="tab.icon" :fill="activeTab === tab.id" />
-                    <div slot="text">{{ tab.label }}</div>
-                </s-navigation-item>
-            </s-navigation>
-        </div>
 
-    </div>
+    </f7-page>
 </template>
 
 <style scoped>
-.home-view {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--md-sys-color-surface);
-}
-
-.is-desktop {
-    max-width: 900px;
-    margin: auto;
-    border-left: 1px solid var(--md-sys-color-outline-variant);
-    border-right: 1px solid var(--md-sys-color-outline-variant);
-    width: 100%;
-}
-
-.desktop-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: var(--md-sys-color-surface);
-    padding-top: 8px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.content-area {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-}
-
-.tab-content {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    inset: 0;
-    background-color: var(--md-sys-color-surface);
-}
-
 .card-grid {
     padding: 16px;
     column-count: 1;
@@ -330,26 +331,5 @@ watch(activeTab, (newTab) => {
     flex-direction: column;
     gap: 16px;
     padding-bottom: 80px;
-}
-
-.load-more {
-    display: flex;
-    justify-content: center;
-    padding: 16px;
-    flex-direction: column;
-    align-items: center;
-}
-
-.end-marker {
-    text-align: center;
-    padding: 16px;
-    font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.5;
-}
-
-.mobile-nav {
-    flex-shrink: 0;
-    z-index: 50;
 }
 </style>

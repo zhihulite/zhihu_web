@@ -1,18 +1,16 @@
-```vue
 <script setup>
 import { ref, onMounted, computed, watch, reactive } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import FeedCard from './FeedCard.vue';
-import MaterialSymbol from './MaterialSymbol.vue';
-import MobileTabLayout from './MobileTabLayout.vue';
-import PullToRefresh from './PullToRefresh.vue';
+import TabLayout from './TabLayout.vue';
 import { homeCardRender } from '../services/homeCardRender.js';
 import $http from '../api/http.js';
 
-const route = useRoute();
-const router = useRouter();
+const props = defineProps({
+    f7route: Object,
+    f7router: Object
+});
 
-const userId = route.params.id;
+const userId = props.f7route?.params?.id;
 const userInfo = ref(null);
 const loading = ref(false);
 const activeTab = ref('activities');
@@ -34,7 +32,7 @@ const fetchTabs = async () => {
     };
 
     try {
-        const res = await $zhihu.get(`https://api.zhihu.com/people/${userId}/profile/tab`);
+        const res = await $http.get(`https://api.zhihu.com/people/${userId}/profile/tab`);
         const data = res.data || res;
         const rawTabs = data.tabs_v3 || [];
         const processedTabs = [];
@@ -120,7 +118,7 @@ const fetchTabs = async () => {
 const fetchUserInfo = async () => {
     loading.value = true;
     try {
-        const res = await $zhihu.get(`https://api.zhihu.com/people/${userId}`);
+        const res = await $http.get(`https://api.zhihu.com/people/${userId}`);
         const data = res.data || res;
         userInfo.value = data;
     } catch (e) {
@@ -213,108 +211,118 @@ watch(activeTab, (newId) => {
     if (newId) fetchContent(newId);
 });
 
-const onRefresh = async () => {
-    if (activeTab.value) {
-        await fetchContent(activeTab.value, true);
+const onRefresh = async (tabId, done) => {
+    // If handled via event, tabId is passed. If fallback, use activeTab.
+    const id = tabId || activeTab.value;
+    if (id) {
+        await fetchContent(id, true);
     }
+    if (done) done();
 };
 
-const onLoadMore = () => {
-    if (activeTab.value) {
-        const dataState = tabData[activeTab.value];
+const onLoadMore = (tabId) => {
+    const id = tabId || activeTab.value;
+    if (id) {
+        const dataState = tabData[id];
         if (dataState && dataState.hasMore) {
-            fetchContent(activeTab.value, false);
+            fetchContent(id, false);
         }
     }
 };
 
 
 const handleBack = () => {
-    router.back();
+    if (props.f7router) props.f7router.back();
 };
 
 const handleItemClick = (item) => {
+    if (!props.f7router) return;
     const id = item.target?.id || item.id;
     const type = item.target?.type || item.type || 'article';
 
     if (type === 'question') {
-        router.push(`/question/${id}`);
+        props.f7router.navigate(`/question/${id}`);
     } else {
-        router.push(`/article/${type}/${id}`);
+        props.f7router.navigate(`/article/${type}/${id}`);
     }
 };
 
 </script>
 
 <template>
-    <div class="user-profile">
-        <div class="top-bar glass">
-            <s-icon-button @click="handleBack">
-                <MaterialSymbol icon="arrow_back" />
-            </s-icon-button>
-            <div class="top-title" v-if="userInfo">{{ userInfo.name }}</div>
-            <s-icon-button>
-                <MaterialSymbol icon="more_vert" />
-            </s-icon-button>
-        </div>
+    <f7-page class="user-profile">
+        <f7-navbar transparent>
+            <f7-nav-left>
+                <f7-link icon-only @click="handleBack">
+                    <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
+                </f7-link>
+            </f7-nav-left>
+            <f7-nav-title v-if="userInfo">{{ userInfo.name }}</f7-nav-title>
+            <f7-nav-right>
+                <f7-link icon-only>
+                    <f7-icon ios="f7:ellipsis_vertical" md="material:more_vert" />
+                </f7-link>
+            </f7-nav-right>
+        </f7-navbar>
 
-        <s-scroll-view class="main-scroll">
-            <PullToRefresh :onRefresh="onRefresh" :onLoadMore="onLoadMore" :hasMore="tabData[activeTab]?.hasMore">
-                <div class="profile-header" v-if="userInfo">
-                    <div class="cover-image"></div>
-                    <div class="info-container">
-                        <div class="avatar-row">
-                            <img :src="userInfo.avatar_url" class="avatar" />
-                            <s-button class="follow-btn" type="filled">关注</s-button>
-                        </div>
-                        <div class="name-row">
-                            <h1 class="name">{{ userInfo.name }}</h1>
-                            <div class="gender-badge" v-if="userInfo.gender !== -1">
-                                <MaterialSymbol :icon="userInfo.gender === 1 ? 'male' : 'female'" :size="16" />
-                            </div>
-                        </div>
-                        <div class="headline" v-if="userInfo.headline">{{ userInfo.headline }}</div>
-
-                        <div class="stats-row">
-                            <div class="stat-item">
-                                <span class="stat-val">{{ userInfo.following_count || 0 }}</span>
-                                <span class="stat-label">关注</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-val">{{ userInfo.follower_count || 0 }}</span>
-                                <span class="stat-label">粉丝</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-val">{{ userInfo.voteup_count || 0 }}</span>
-                                <span class="stat-label">获赞</span>
-                            </div>
-                        </div>
+        <!-- Profile Header -->
+        <div class="profile-header" v-if="userInfo" style="margin-top: 44px;">
+            <div class="cover-image"
+                :style="{ backgroundImage: userInfo.cover_url ? `url(${userInfo.cover_url})` : '' }"></div>
+            <div class="info-container">
+                <div class="avatar-row">
+                    <img :src="userInfo.avatar_url" class="avatar" />
+                    <f7-button class="follow-btn" fill small>关注</f7-button>
+                </div>
+                <div class="name-row">
+                    <h1 class="name">{{ userInfo.name }}</h1>
+                    <div class="gender-badge" v-if="userInfo.gender !== -1">
+                        <f7-icon :ios="userInfo.gender === 1 ? 'f7:person' : 'f7:person'"
+                            :md="userInfo.gender === 1 ? 'material:male' : 'material:female'" size="16" />
                     </div>
                 </div>
+                <div class="headline" v-if="userInfo.headline">{{ userInfo.headline }}</div>
 
-                <div class="tabs-container">
-                    <MobileTabLayout expanded v-if="tabs.length > 0" :tabs="tabs" :activeId="activeTab"
-                        :onChange="(id) => activeTab = id">
-                        <template v-for="tab in tabs" :key="tab.id" #[tab.id]>
-                            <div class="content-list">
-                                <div v-if="tabData[tab.id]?.loading && (!tabData[tab.id]?.list || tabData[tab.id].list.length === 0)"
-                                    class="loading-state">
-                                    <s-circular-progress indeterminate="true"></s-circular-progress>
-                                </div>
-                                <template v-else>
-                                    <div v-if="tabData[tab.id]?.list.length === 0" class="empty-state">
-                                        暂无内容
-                                    </div>
-                                    <FeedCard v-for="(item, index) in tabData[tab.id]?.list" :key="index" :item="item"
-                                        @click="handleItemClick(item)" />
-                                </template>
-                            </div>
-                        </template>
-                    </MobileTabLayout>
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-val">{{ userInfo.following_count || 0 }}</span>
+                        <span class="stat-label">关注</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-val">{{ userInfo.follower_count || 0 }}</span>
+                        <span class="stat-label">粉丝</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-val">{{ userInfo.voteup_count || 0 }}</span>
+                        <span class="stat-label">获赞</span>
+                    </div>
                 </div>
-            </PullToRefresh>
-        </s-scroll-view>
-    </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-container" style="flex: 1; min-height: 0;">
+            <TabLayout expanded v-if="tabs.length > 0" :tabs="tabs" :activeId="activeTab"
+                :onChange="(id) => activeTab = id">
+                <template v-for="tab in tabs" :key="tab.id" #[tab.id]>
+                    <div class="content-list">
+                        <div v-if="tabData[tab.id]?.loading && (!tabData[tab.id]?.list || tabData[tab.id].list.length === 0)"
+                            class="loading-state">
+                            <f7-preloader />
+                        </div>
+                        <template v-else>
+                            <div v-if="!tabData[tab.id]?.list || tabData[tab.id]?.list.length === 0"
+                                class="empty-state">
+                                暂无内容
+                            </div>
+                            <FeedCard v-for="(item, index) in tabData[tab.id]?.list" :key="index" :item="item"
+                                @click="handleItemClick(item)" />
+                        </template>
+                    </div>
+                </template>
+            </TabLayout>
+        </div>
+    </f7-page>
 </template>
 
 <style scoped>

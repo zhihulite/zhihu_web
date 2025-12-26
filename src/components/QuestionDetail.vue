@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import MaterialSymbol from './MaterialSymbol.vue';
 
-const route = useRoute();
-const router = useRouter();
 
-const id = computed(() => route.params.id);
+const props = defineProps({
+    f7route: Object,
+    f7router: Object
+});
+
+const id = computed(() => props.f7route?.params?.id);
 const question = ref(null);
 const answers = ref([]);
 const isLoading = ref(true);
@@ -20,7 +21,7 @@ const formatCount = (count) => {
 const fetchQuestionData = async () => {
     isLoading.value = true;
     try {
-        const res = await window.$zhihu.get(`https://api.zhihu.com/questions/${id.value}`);
+        const res = await window.$http.get(`https://api.zhihu.com/questions/${id.value}`);
         const data = res.data || res;
 
         question.value = {
@@ -37,7 +38,7 @@ const fetchQuestionData = async () => {
             }
         };
 
-        const answersRes = await window.$zhihu.get(`https://api.zhihu.com/questions/${id.value}/answers?limit=20&order=default`);
+        const answersRes = await window.$http.get(`https://api.zhihu.com/questions/${id.value}/answers?limit=20&order=default`);
         const answersData = answersRes.data || answersRes;
 
         answers.value = (Array.isArray(answersData) ? answersData : []).map(item => ({
@@ -58,15 +59,15 @@ const fetchQuestionData = async () => {
 };
 
 const handleBack = () => {
-    router.back();
+    if (props.f7router) props.f7router.back();
 };
 
 const handleAnswerClick = (answer) => {
-    router.push(`/article/answer/${answer.id}`);
+    if (props.f7router) props.f7router.navigate(`/article/answer/${answer.id}`);
 };
 
 const handleTopicClick = (tag) => {
-    router.push(`/topic/${tag.id}`);
+    if (props.f7router) props.f7router.navigate(`/topic/${tag.id}`);
 };
 
 onMounted(() => {
@@ -75,123 +76,131 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="question-detail">
-        <div v-if="isLoading" class="loading-state">
-            <MaterialSymbol icon="progress_activity" :size="32" class="spin" />
+    <f7-page class="question-detail">
+        <f7-navbar>
+            <f7-nav-left>
+                <f7-link icon-only @click="handleBack">
+                    <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
+                </f7-link>
+            </f7-nav-left>
+            <f7-nav-title v-if="question">{{ question.title }}</f7-nav-title>
+            <f7-nav-right>
+                <f7-link icon-only>
+                    <f7-icon ios="f7:ellipsis_vertical" md="material:more_vert" />
+                </f7-link>
+            </f7-nav-right>
+        </f7-navbar>
+
+        <div v-if="isLoading" class="loading-state display-flex justify-content-center align-items-center"
+            style="height: 100%;">
+            <f7-preloader />
         </div>
 
-        <template v-else-if="question">
-            <div class="top-bar glass">
-                <s-icon-button @click="handleBack">
-                    <MaterialSymbol icon="arrow_back" />
-                </s-icon-button>
-                <div class="title-text">{{ question.title }}</div>
-                <s-icon-button>
-                    <MaterialSymbol icon="more_vert" />
-                </s-icon-button>
-            </div>
-
-            <s-scroll-view class="main-scroll">
-                <div class="content-wrapper">
-                    <div class="question-header">
-                        <div class="max-container">
-                            <div class="tags-row">
-                                <s-chip v-for="tag in question.tags" :key="tag.id" class="tag-chip" clickable="true"
-                                    @click="handleTopicClick(tag)">
-                                    <span class="tag-text">{{ tag.name }}</span>
-                                </s-chip>
-                            </div>
-
-                            <div class="author-info">
-                                <img :src="question.author.avatarUrl" class="author-avatar"
-                                    :onerror="`this.src='https://placehold.co/32x32/6366f1/ffffff?text=U'`" />
-                                <div class="author-details">
-                                    <span class="author-name">{{ question.author.name }}</span>
-                                    <span class="author-bio">{{ question.author.bio }}</span>
-                                </div>
-                            </div>
-
-                            <div class="description-preview">
-                                <div class="description-text" v-html="question.description"></div>
-                                <button v-if="question.description" @click="isDialogOpen = true" class="expand-button">
-                                    展开阅读全文
-                                    <MaterialSymbol icon="keyboard_arrow_down" :size="18" />
-                                </button>
-                            </div>
-
-                            <div class="action-bar">
-                                <div class="action-buttons">
-                                    <s-button :type="isFollowed ? 'filled-tonal' : 'filled'"
-                                        @click="isFollowed = !isFollowed" class="action-btn">
-                                        <s-icon slot="icon">
-                                            <MaterialSymbol :icon="isFollowed ? 'check' : 'add'" />
-                                        </s-icon>
-                                        {{ isFollowed ? '已关注' : '关注问题' }}
-                                    </s-button>
-                                </div>
-
-                                <div class="metrics">
-                                    <div class="metric-item">
-                                        <MaterialSymbol icon="star" :size="20" />
-                                        <span>{{ formatCount(question.followerCount) }} 收藏</span>
-                                    </div>
-                                    <div class="metric-item">
-                                        <MaterialSymbol icon="chat_bubble" :size="18" />
-                                        <span>{{ question.answerCount }} 评论</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <s-divider></s-divider>
-
+        <f7-page-content v-else-if="question" class="padding-bottom">
+            <div class="content-wrapper">
+                <f7-block class="question-header no-margin padding">
                     <div class="max-container">
-                        <div class="answers-header">
-                            <h2 class="answers-title">{{ question.answerCount }} 个回答</h2>
-                            <div class="sort-option">
-                                <span>默认排序</span>
-                                <MaterialSymbol icon="sort" :size="16" />
+                        <div class="tags-row display-flex flex-wrap margin-bottom-half" style="gap: 8px;">
+                            <f7-chip v-for="tag in question.tags" :key="tag.id" :text="tag.name" outline
+                                @click="handleTopicClick(tag)" />
+                        </div>
+
+                        <div class="question-title font-size-20 font-weight-bold margin-bottom">{{ question.title }}
+                        </div>
+
+                        <div class="author-info display-flex align-items-center margin-bottom">
+                            <img :src="question.author.avatarUrl" class="author-avatar width-32 height-32"
+                                :onerror="`this.src='https://placehold.co/32x32/6366f1/ffffff?text=U'`"
+                                style="border-radius: 50%;" />
+                            <div class="author-details margin-left display-flex flex-direction-column">
+                                <span class="author-name font-weight-bold">{{ question.author.name }}</span>
+                                <span class="author-bio text-color-gray text-size-12">{{ question.author.bio }}</span>
                             </div>
                         </div>
 
-                        <div class="answers-list">
-                            <s-card v-for="answer in answers" :key="answer.id" class="answer-item" clickable="true"
-                                @click="handleAnswerClick(answer)">
-                                <div class="answer-author">
-                                    <img :src="answer.avatarUrl" class="answer-avatar"
-                                        :onerror="`this.src='https://placehold.co/24x24/6366f1/ffffff?text=U'`" />
-                                    <span class="answer-author-name">{{ answer.author }}</span>
-                                </div>
+                        <div class="description-preview margin-bottom">
+                            <div class="description-text" v-html="question.description"></div>
+                            <f7-button small flat v-if="question.description" @click="isDialogOpen = true"
+                                class="expand-button margin-top-half display-flex align-items-center">
+                                展开阅读全文
+                                <f7-icon ios="f7:chevron_down" md="material:keyboard_arrow_down" size="16" />
+                            </f7-button>
+                        </div>
 
-                                <div class="answer-excerpt">
-                                    <p>{{ answer.excerpt }}</p>
-                                </div>
+                        <div
+                            class="action-bar display-flex justify-content-space-between align-items-center margin-top">
+                            <div class="action-buttons">
+                                <f7-button :fill="!isFollowed" :outline="isFollowed" small
+                                    @click="isFollowed = !isFollowed">
+                                    <f7-icon :ios="isFollowed ? 'f7:checkmark' : 'f7:plus'"
+                                        :md="isFollowed ? 'material:check' : 'material:add'" size="16" />
+                                    {{ isFollowed ? '已关注' : '关注问题' }}
+                                </f7-button>
+                            </div>
 
-                                <div class="answer-metrics">
-                                    <div class="metric-item primary">
-                                        <MaterialSymbol icon="thumb_up" :size="18" :fill="true" />
-                                        <span>{{ formatCount(answer.voteCount) }}</span>
-                                    </div>
-                                    <div class="metric-item">
-                                        <MaterialSymbol icon="chat_bubble" :size="18" />
-                                        <span>{{ formatCount(answer.commentCount) }}</span>
-                                    </div>
-                                    <div class="timestamp">{{ answer.timestamp }}</div>
+                            <div class="metrics display-flex gap-2 text-color-gray">
+                                <div class="metric-item display-flex align-items-center margin-right">
+                                    <f7-icon ios="f7:star_fill" md="material:star" size="18" />
+                                    <span class="margin-left-half">{{ formatCount(question.followerCount) }} 收藏</span>
                                 </div>
-                            </s-card>
+                                <div class="metric-item display-flex align-items-center">
+                                    <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="16" />
+                                    <span class="margin-left-half">{{ question.answerCount }} 评论</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </s-scroll-view>
+                </f7-block>
 
-            <s-dialog :showed="isDialogOpen" @close="isDialogOpen = false">
-                <div slot="headline">问题描述</div>
-                <div slot="text" class="dialog-content" v-html="question.description"></div>
-                <s-button slot="action" type="text" @click="isDialogOpen = false">关闭</s-button>
-            </s-dialog>
-        </template>
-    </div>
+                <f7-block-title>{{ question.answerCount }} 个回答</f7-block-title>
+
+                <div class="answers-list">
+                    <f7-card v-for="answer in answers" :key="answer.id"
+                        class="answer-item margin-horizontal margin-bottom" @click="handleAnswerClick(answer)">
+                        <f7-card-content>
+                            <div class="answer-author display-flex align-items-center margin-bottom-half">
+                                <img :src="answer.avatarUrl" class="answer-avatar width-24 height-24"
+                                    style="border-radius: 50%;"
+                                    :onerror="`this.src='https://placehold.co/24x24/6366f1/ffffff?text=U'`" />
+                                <span class="answer-author-name font-weight-bold margin-left-half">{{ answer.author
+                                    }}</span>
+                            </div>
+
+                            <div class="answer-excerpt text-color-gray">
+                                <p class="no-margin">{{ answer.excerpt }}</p>
+                            </div>
+
+                            <div
+                                class="answer-metrics display-flex align-items-center margin-top text-color-gray text-size-12">
+                                <div class="metric-item primary display-flex align-items-center margin-right">
+                                    <f7-icon ios="f7:hand_thumbsup_fill" md="material:thumb_up" size="16" />
+                                    <span class="margin-left-half">{{ formatCount(answer.voteCount) }}</span>
+                                </div>
+                                <div class="metric-item display-flex align-items-center">
+                                    <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="16" />
+                                    <span class="margin-left-half">{{ formatCount(answer.commentCount) }}</span>
+                                </div>
+                                <div class="timestamp margin-left-auto">{{ answer.timestamp }}</div>
+                            </div>
+                        </f7-card-content>
+                    </f7-card>
+                </div>
+            </div>
+        </f7-page-content>
+
+        <f7-popup class="description-popup" :opened="isDialogOpen" @popup:closed="isDialogOpen = false" swipe-to-close>
+            <f7-page>
+                <f7-navbar title="问题描述">
+                    <f7-nav-right>
+                        <f7-link popup-close>关闭</f7-link>
+                    </f7-nav-right>
+                </f7-navbar>
+                <f7-page-content class="padding">
+                    <div class="dialog-content" v-html="question.description"></div>
+                </f7-page-content>
+            </f7-page>
+        </f7-popup>
+    </f7-page>
 </template>
 
 <style scoped>

@@ -9,7 +9,8 @@ class PaginatedResult {
 		this.data = data;
 		this.paging = paging || {
 			next: null,
-			prev: null
+			prev: null,
+			is_end: false,
 		};
 		this.options = options;
 	}
@@ -33,28 +34,30 @@ const httpMethods = {
 	get(url, options = {}) {
 		const zhihuRequest = getZhihuInstance();
 		return zhihuRequest.get(url, options).then(res =>
-			new PaginatedResult(res.data, res.paging, options)
+			(res.paging && typeof res.paging === 'object')
+				? new PaginatedResult(res.data, res.paging, options)
+				: res
 		);
 	},
 
 	post(url, data = {}, options = {}) {
 		const zhihuRequest = getZhihuInstance();
-		return zhihuRequest.post(url, data, options).then(res => res.data);
+		return zhihuRequest.post(url, data, options).then(res => res);
 	},
 
 	patch(url, data = {}, options = {}) {
 		const zhihuRequest = getZhihuInstance();
-		return zhihuRequest.patch(url, data, options).then(res => res.data);
+		return zhihuRequest.patch(url, data, options).then(res => res);
 	},
 
 	put(url, data = {}, options = {}) {
 		const zhihuRequest = getZhihuInstance();
-		return zhihuRequest.put(url, data, options).then(res => res.data);
+		return zhihuRequest.put(url, data, options).then(res => res);
 	},
 
 	delete(url, options = {}) {
 		const zhihuRequest = getZhihuInstance();
-		return zhihuRequest.delete(url, options).then(res => res.data);
+		return zhihuRequest.delete(url, options).then(res => res);
 	},
 };
 

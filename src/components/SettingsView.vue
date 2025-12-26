@@ -1,47 +1,27 @@
 <script setup>
-import MaterialSymbol from './MaterialSymbol.vue';
+
 </script>
 
 <template>
-    <div class="settings-view">
-        <div class="container">
-            <s-scroll-view class="scroller">
-                <h1 class="page-title">设置</h1>
+    <f7-page name="settings">
+        <f7-navbar title="设置" back-link="返回"></f7-navbar>
 
-                <div class="settings-group">
-                    <div class="settings-item border-bottom">
-                        <div class="item-content">
-                            <span class="item-title">深色模式</span>
-                            <span class="item-subtitle">跟随系统自动切换</span>
-                        </div>
-                        <s-button type="text">自动</s-button>
-                    </div>
-                    <div class="settings-item">
-                        <div class="item-content">
-                            <span class="item-title">字号大小</span>
-                            <span class="item-subtitle">标准</span>
-                        </div>
-                        <MaterialSymbol icon="chevron_right" class="icon-end" />
-                    </div>
-                </div>
+        <f7-block-title>外观</f7-block-title>
+        <f7-list strong inset>
+            <f7-list-item title="深色模式" after="自动" link="#"></f7-list-item>
+            <f7-list-item title="字号大小" after="标准" link="#"></f7-list-item>
+        </f7-list>
 
-                <div class="settings-group">
-                    <div class="settings-item">
-                        <div class="item-content">
-                            <span class="item-title">隐私政策</span>
-                        </div>
-                        <MaterialSymbol icon="open_in_new" :size="18" class="icon-end" />
-                    </div>
-                    <div class="settings-item">
-                        <div class="item-content">
-                            <span class="item-title">关于</span>
-                            <span class="item-subtitle">版本 1.0.0 (Beta)</span>
-                        </div>
-                    </div>
-                </div>
-            </s-scroll-view>
-        </div>
-    </div>
+        <f7-block-title>关于</f7-block-title>
+        <f7-list strong inset>
+            <f7-list-item title="隐私政策" link="#" external target="_blank">
+                <template #after>
+                    <f7-icon ios="f7:arrow_up_right_square" md="material:open_in_new" size="18" />
+                </template>
+            </f7-list-item>
+            <f7-list-item title="关于" after="版本 1.0.0 (Beta)"></f7-list-item>
+        </f7-list>
+    </f7-page>
 </template>
 
 <style scoped>

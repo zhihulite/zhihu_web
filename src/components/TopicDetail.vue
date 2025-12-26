@@ -1,15 +1,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import MaterialSymbol from './MaterialSymbol.vue';
-import MobileTabLayout from './MobileTabLayout.vue';
-import PullToRefresh from './PullToRefresh.vue';
+import TabLayout from './TabLayout.vue';
 import FeedCard from './FeedCard.vue';
 
-const route = useRoute();
-const router = useRouter();
+const props = defineProps({
+    f7route: Object,
+    f7router: Object
+});
 
-const topicId = computed(() => route.params.id);
+const topicId = computed(() => props.f7route?.params?.id);
 const topicInfo = ref(null);
 const loading = ref(false);
 const activeTab = ref('detail');
@@ -33,7 +32,7 @@ const tabs = [
 const fetchTopicInfo = async () => {
     loading.value = true;
     try {
-        const res = await $zhihu.get(`https://api.zhihu.com/topics/${topicId.value}`);
+        const res = await $http.get(`https://api.zhihu.com/topics/${topicId.value}`);
         const data = res.data || res;
 
         topicInfo.value = {
@@ -118,14 +117,15 @@ const fetchContent = async (tabId, isRefresh = false) => {
 };
 
 const handleBack = () => {
-    router.back();
+    if (props.f7router) props.f7router.back();
 };
 
 const handleArticleClick = (item) => {
+    if (!props.f7router) return;
     if (item.type === 'question') {
-        router.push(`/question/${item.id}`);
+        props.f7router.navigate(`/question/${item.id}`);
     } else {
-        router.push(`/article/${item.type}/${item.id}`);
+        props.f7router.navigate(`/article/${item.type}/${item.id}`);
     }
 };
 
@@ -144,114 +144,79 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="topic-detail">
-        <div class="top-bar glass">
-            <s-icon-button @click="handleBack">
-                <MaterialSymbol icon="arrow_back" />
-            </s-icon-button>
-            <span class="title">{{ topicInfo?.name || '话题' }}</span>
+    <f7-page class="topic-detail" ptr @ptr:refresh="onRefresh" infinite-scroll @infinite="onLoadMore">
+        <f7-navbar>
+            <f7-nav-left>
+                <f7-link icon-only @click="handleBack">
+                    <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
+                </f7-link>
+            </f7-nav-left>
+            <f7-nav-title v-if="topicInfo">{{ topicInfo.name }}</f7-nav-title>
+        </f7-navbar>
+
+        <div v-if="loading && !topicInfo" class="loading-state display-flex justify-content-center align-items-center"
+            style="height: 100%;">
+            <f7-preloader />
         </div>
 
-        <s-scroll-view class="main-scroll">
-            <div v-if="activeTab === 'detail'">
-                <div class="topic-header" v-if="topicInfo">
-                    <div class="cover-image"></div>
-                    <div class="info-container">
-                        <img :src="topicInfo.avatar" class="topic-avatar"
-                            :onerror="`this.src='https://placehold.co/80x80/6366f1/ffffff?text=T'`" />
-                        <div class="topic-info">
-                            <h1 class="topic-name">{{ topicInfo.name }}</h1>
-                            <p class="topic-excerpt">{{ topicInfo.excerpt }}</p>
-                            <div class="stats">
-                                <div class="stat-item">
-                                    <span class="stat-val">{{ topicInfo.followerCount }}</span>
-                                    <span class="stat-label">关注者</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-val">{{ topicInfo.questionCount }}</span>
-                                    <span class="stat-label">问题</span>
-                                </div>
+        <div v-else class="page-content-wrapper">
+            <div class="topic-header padding" v-if="topicInfo">
+                <div class="display-flex align-items-start">
+                    <img :src="topicInfo.avatar" class="topic-avatar width-80 height-80"
+                        style="border-radius: 8px; object-fit: cover;"
+                        :onerror="`this.src='https://placehold.co/80x80/6366f1/ffffff?text=T'`" />
+                    <div class="margin-left flex-1">
+                        <h1 class="font-size-24 font-weight-bold no-margin">{{ topicInfo.name }}</h1>
+                        <div class="stats display-flex gap-2 margin-top-half text-color-gray">
+                            <div class="stat-item margin-right">
+                                <b class="text-color-black">{{ topicInfo.followerCount }}</b> 关注者
                             </div>
-                            <s-button type="filled" class="follow-btn">
-                                <s-icon slot="icon">
-                                    <MaterialSymbol icon="add" />
-                                </s-icon>
-                                关注话题
-                            </s-button>
+                            <div class="stat-item">
+                                <b class="text-color-black">{{ topicInfo.questionCount }}</b> 问题
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="tabs-container">
-                    <MobileTabLayout expanded :tabs="tabs" :activeId="activeTab"
-                        :onChange="(id) => { activeTab = id; if (id !== 'detail' && !tabData[id].list.length) fetchContent(id); }">
-                        <template #detail>
-                            <div class="detail-content">
-                                <s-card class="detail-card">
-                                    <h3 class="detail-title">{{ topicInfo?.name }}</h3>
-                                    <p class="detail-text">{{ topicInfo?.excerpt || '暂无简介' }}</p>
-                                </s-card>
-                            </div>
-                        </template>
-                    </MobileTabLayout>
-                </div>
+                <p class="topic-excerpt text-color-gray margin-top">{{ topicInfo.excerpt }}</p>
+                <f7-button fill class="follow-btn margin-top">关注话题</f7-button>
             </div>
 
-            <PullToRefresh v-else :onRefresh="onRefresh" :onLoadMore="onLoadMore"
-                :hasMore="tabData[activeTab]?.hasMore">
-                <div class="topic-header" v-if="topicInfo">
-                    <div class="cover-image"></div>
-                    <div class="info-container">
-                        <img :src="topicInfo.avatar" class="topic-avatar"
-                            :onerror="`this.src='https://placehold.co/80x80/6366f1/ffffff?text=T'`" />
-                        <div class="topic-info">
-                            <h1 class="topic-name">{{ topicInfo.name }}</h1>
-                            <p class="topic-excerpt">{{ topicInfo.excerpt }}</p>
-                            <div class="stats">
-                                <div class="stat-item">
-                                    <span class="stat-val">{{ topicInfo.followerCount }}</span>
-                                    <span class="stat-label">关注者</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-val">{{ topicInfo.questionCount }}</span>
-                                    <span class="stat-label">问题</span>
-                                </div>
-                            </div>
-                            <s-button type="filled" class="follow-btn">
-                                <s-icon slot="icon">
-                                    <MaterialSymbol icon="add" />
-                                </s-icon>
-                                关注话题
-                            </s-button>
+            <f7-toolbar tabbar>
+                <f7-link v-for="tab in tabs" :key="tab.id" :tab-link="`#tab-${tab.id}`"
+                    :tab-link-active="activeTab === tab.id" @click="activeTab = tab.id">
+                    {{ tab.label }}
+                </f7-link>
+            </f7-toolbar>
+
+            <f7-tabs animated>
+                <f7-tab v-for="tab in tabs" :key="tab.id" :id="`tab-${tab.id}`" class="page-content"
+                    :tab-active="activeTab === tab.id">
+                    <div v-if="tab.id === 'detail'" class="padding">
+                        <f7-card>
+                            <f7-card-content>
+                                <h3 class="no-margin-top">{{ topicInfo?.name }}</h3>
+                                <p>{{ topicInfo?.excerpt || '暂无简介' }}</p>
+                            </f7-card-content>
+                        </f7-card>
+                    </div>
+                    <div v-else class="content-list padding-bottom">
+                        <div v-if="tabData[tab.id].loading && tabData[tab.id].list.length === 0"
+                            class="padding text-align-center">
+                            <f7-preloader />
+                        </div>
+                        <div v-else-if="tabData[tab.id].list.length === 0"
+                            class="padding text-align-center text-color-gray">
+                            暂无内容
+                        </div>
+                        <div v-else>
+                            <FeedCard v-for="item in tabData[tab.id].list" :key="item.id" :item="item"
+                                @click="handleArticleClick(item)" class="margin-bottom" />
                         </div>
                     </div>
-                </div>
-
-                <div class="tabs-container">
-                    <MobileTabLayout expanded :tabs="tabs" :activeId="activeTab"
-                        :onChange="(id) => { activeTab = id; if (id !== 'detail' && !tabData[id].list.length) fetchContent(id); }">
-                        <template v-for="tab in tabs.filter(t => t.id !== 'detail')" :key="tab.id" #[tab.id]>
-                            <div class="content-list">
-                                <div v-if="tabData[tab.id].loading && tabData[tab.id].list.length === 0"
-                                    class="loading-state">
-                                    <MaterialSymbol icon="progress_activity" :size="24" class="spin" />
-                                    加载中...
-                                </div>
-                                <div v-else-if="tabData[tab.id].list.length === 0" class="empty-state">
-                                    暂无内容
-                                </div>
-                                <div v-else class="card-grid">
-                                    <div v-for="item in tabData[tab.id].list" :key="item.id" class="masonry-item">
-                                        <FeedCard :item="item" @click="handleArticleClick(item)" />
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </MobileTabLayout>
-                </div>
-            </PullToRefresh>
-        </s-scroll-view>
-    </div>
+                </f7-tab>
+            </f7-tabs>
+        </div>
+    </f7-page>
 </template>
 
 <style scoped>

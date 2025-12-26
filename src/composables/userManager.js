@@ -4,7 +4,8 @@ import { tokenManager } from '@/api/auth';
 // 创建响应式状态
 const state = reactive({
   currentUser: null,
-  isLoading: false
+  isLoading: false,
+  isLoggedIn: !!(tokenManager.getAccessToken() && !tokenManager.isGuest)
 });
 
 // 组件间通信
@@ -31,13 +32,14 @@ const events = {
 
 // 计算属性
 const isLoggedIn = computed(() => {
-  const accessToken = tokenManager.getAccessToken();
-  return accessToken && !tokenManager.isGuest;
+  return state.isLoggedIn;
 });
 
 // 刷新用户数据
 async function refreshUser() {
-  if (!isLoggedIn.value) {
+  state.isLoggedIn = !!(tokenManager.getAccessToken() && !tokenManager.isGuest);
+
+  if (!state.isLoggedIn) {
     state.currentUser = null;
     events.emit('user:updated', null);
     return null;
@@ -45,7 +47,7 @@ async function refreshUser() {
 
   state.isLoading = true;
   try {
-    const userData = await $zhihu.get("https://api.zhihu.com/me");
+    const userData = await $http.get("https://api.zhihu.com/me");
     state.currentUser = userData;
     events.emit('user:updated', userData); // 通知订阅者数据已更新
     return userData;
@@ -62,13 +64,14 @@ async function refreshUser() {
 // 重置用户数据
 function resetUser() {
   state.currentUser = null;
+  state.isLoggedIn = false;
   events.emit('user:reset');
 }
 
 // 通用的刷新hook - 可以用于任何需要刷新数据的组件
 export function useRefreshData(refreshFn) {
   const isRefreshing = ref(false);
-  
+
   const refresh = async (...args) => {
     isRefreshing.value = true;
     try {
@@ -81,7 +84,7 @@ export function useRefreshData(refreshFn) {
       isRefreshing.value = false;
     }
   };
-  
+
   return {
     refresh,
     isRefreshing
@@ -91,9 +94,9 @@ export function useRefreshData(refreshFn) {
 export function useUser() {
   // 使用通用refresh hook处理刷新逻辑
   const { refresh: refreshUserData, isRefreshing } = useRefreshData(refreshUser);
-  
+
   const onUserUpdate = (callback) => events.on('user:updated', callback);
-  
+
   return {
     currentUser: computed(() => state.currentUser),
     isLoading: computed(() => state.isLoading),

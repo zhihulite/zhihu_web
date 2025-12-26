@@ -31,3 +31,42 @@ body {
   width: 100%;
   height: 100%;
 }
+
+:root {
+  --md-sys-color-primary: var(--f7-theme-color);
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-surface: var(--f7-page-bg-color);
+  --md-sys-color-on-surface: var(--f7-text-color);
+  --md-sys-color-on-surface-variant: #8e8e93;
+  /* iOS gray */
+  --md-sys-color-outline: #c7c7cc;
+  --md-sys-color-outline-variant: rgba(0, 0, 0, 0.12);
+  --md-sys-color-surface-container: #f2f2f7;
+  --md-sys-color-surface-container-low: #ffffff;
+  --md-sys-color-surface-container-high: #e5e5ea;
+  --md-sys-color-error: var(--f7-color-red);
+  --md-sys-color-error-container: rgba(255, 59, 48, 0.1);
+  --md-sys-color-secondary: var(--f7-color-blue);
+  --md-sys-color-secondary-container: rgba(0, 122, 255, 0.1);
+  --md-sys-color-tertiary: var(--f7-color-teal);
+  --md-sys-color-tertiary-container: rgba(90, 200, 250, 0.1);
+}
+
+.dark {
+  --md-sys-color-surface-container: #1c1c1d;
+  --md-sys-color-surface-container-low: #000000;
+  --md-sys-color-outline-variant: rgba(255, 255, 255, 0.12);
+}
+
+.full-content {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.tab-bar.tab-bar-nested {
+  top: 0 !important;
+}
+
+.tabs-auto-page-content .tab .page-content {
+  padding-top: 0 !important;
+}

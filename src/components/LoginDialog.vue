@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onUnmounted } from 'vue';
-import MaterialSymbol from './MaterialSymbol.vue';
+
 import {
     tokenManager,
     getCaptcha,
@@ -110,6 +110,7 @@ const handleCaptchaSubmit = async () => {
     try {
         loading.value = true;
         clearError();
+        // action.value is maintained across captcha
         await submitCaptcha(captchaInput.value, captchaTicket.value);
         showCaptcha.value = false;
         captchaImageUrl.value = '';
@@ -165,6 +166,7 @@ const performLogin = async () => {
 };
 
 const handleLogin = async () => {
+    action.value = 'login';
     if (!phone.value) return setError('请输入手机号');
     if (!isValidPhone(phone.value)) return setError('手机号格式不正确');
 
@@ -205,6 +207,7 @@ const performSend = async () => {
         setError('发送验证码失败');
     } finally {
         loading.value = false;
+        // Reset action to login so next button click attempts to login
         action.value = 'login'
     }
 };
@@ -227,11 +230,8 @@ const switchMethod = () => {
 };
 
 const handleDialogClose = (e) => {
-    if (!allowClose.value) {
-        e.preventDefault();
-        return;
-    }
-    allowClose.value = false;
+    // F7 popup closed
+    emit('update:modelValue', false);
 };
 
 const handleCancel = () => {
@@ -241,14 +241,15 @@ const handleCancel = () => {
 const onDialogClosed = () => {
     resetForm();
     allowClose.value = false;
+    emit('update:modelValue', false);
 };
 
 watch(smsCode, (val) => {
-    if (val.length > 4) smsCode.value = val.slice(0, 6);
+    if (val && val.length > 6) smsCode.value = val.slice(0, 6);
 });
 
 watch(captchaInput, (val) => {
-    if (val.length > 4) captchaInput.value = val.slice(0, 4);
+    if (val && val.length > 4) captchaInput.value = val.slice(0, 4);
 });
 
 onUnmounted(() => {
@@ -260,104 +261,77 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <s-dialog ref="dialogRef" :showed="modelValue" @close="handleDialogClose" @closed="onDialogClosed">
-        <div slot="headline">{{ showCaptcha ? '验证' : '登录' }}</div>
+    <f7-popup class="login-popup" :opened="modelValue" @popup:closed="onDialogClosed" swipe-to-close>
+        <f7-page login-screen>
+            <f7-navbar>
+                <f7-nav-left>
+                    <f7-link icon-only @click="handleCancel">
+                        <f7-icon ios="f7:multiply" md="material:close" />
+                    </f7-link>
+                </f7-nav-left>
+                <f7-nav-title>{{ showCaptcha ? '验证' : '登录' }}</f7-nav-title>
+            </f7-navbar>
 
-        <div slot="text">
-            <div v-if="showCaptcha" class="captcha-container">
-                <img :src="captchaImageUrl" class="captcha-image" alt="验证码" />
-                <s-text-field v-model="captchaInput" label="请输入图中验证码" class="input-field"
-                    :disabled="!captchaTicket"></s-text-field>
-                <div v-if="!captchaTicket" class="error-message">
-                    <MaterialSymbol icon="error" :size="16" />
-                    验证码加载失败，请重试
+            <f7-page-content>
+                <div v-if="showCaptcha" class="padding">
+                    <div class="captcha-img-wrapper text-align-center margin-bottom">
+                        <img :src="captchaImageUrl" class="captcha-image" alt="验证码" />
+                    </div>
+                    <f7-list>
+                        <f7-list-input label="请输入图中验证码" type="text" placeholder="4位验证码" v-model:value="captchaInput"
+                            clear-button />
+                    </f7-list>
+                    <f7-block v-if="!captchaTicket" class="text-color-red">
+                        <f7-icon ios="f7:exclamationmark_circle_fill" md="material:error" size="16" />
+                        验证码加载失败，请重试
+                    </f7-block>
+                    <f7-block>
+                        <f7-button fill large @click="handleCaptchaSubmit" :loading="loading">确认</f7-button>
+                    </f7-block>
                 </div>
-            </div>
 
-            <div v-else class="login-form">
-                <s-text-field v-model="phone" label="手机号" type="tel" inputmode="numeric"
-                    class="input-field"></s-text-field>
+                <div v-else class="login-form-wrapper">
+                    <f7-list form>
+                        <f7-list-input label="手机号" type="tel" placeholder="请输入手机号" v-model:value="phone" clear-button />
 
-                <s-text-field v-if="loginMethod === 'password'" v-model="password" label="密码" type="password"
-                    class="input-field"></s-text-field>
+                        <f7-list-input v-if="loginMethod === 'password'" label="密码" type="password" placeholder="请输入密码"
+                            v-model:value="password" clear-button />
 
-                <div v-else class="code-input-group">
-                    <s-text-field v-model="smsCode" label="验证码" inputmode="numeric"
-                        class="input-field code-field"></s-text-field>
-                    <s-button type="outlined" @click="handleSendCode" :disabled="countdown > 0 || loading"
-                        class="send-code-btn">
-                        {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-                    </s-button>
+                        <f7-list-input v-else label="验证码" type="text" placeholder="短信验证码" v-model:value="smsCode">
+                            <template #content-end>
+                                <f7-button small outline @click="handleSendCode" :disabled="countdown > 0 || loading"
+                                    style="width: 100px; margin: 10px;">
+                                    {{ countdown > 0 ? `${countdown}s` : '发送' }}
+                                </f7-button>
+                            </template>
+                        </f7-list-input>
+                    </f7-list>
+
+                    <f7-block>
+                        <f7-button fill large @click="handleLogin" :loading="loading">登录</f7-button>
+                        <div class="margin-top text-align-center">
+                            <f7-button @click="switchMethod">{{ loginMethod === 'password' ? '验证码登录' : '密码登录'
+                                }}</f7-button>
+                        </div>
+                    </f7-block>
+
+                    <f7-block v-if="error"
+                        class="text-color-red text-align-center display-flex justify-content-center align-items-center"
+                        style="gap:8px;">
+                        <f7-icon ios="f7:exclamationmark_circle_fill" md="material:error" size="16" /> {{ error }}
+                    </f7-block>
                 </div>
-
-                <s-button type="text" @click="switchMethod" class="switch-btn">
-                    {{ loginMethod === 'password' ? '验证码登录' : '密码登录' }}
-                </s-button>
-            </div>
-
-            <div v-if="error && !showCaptcha" class="error-message">
-                <MaterialSymbol icon="error" :size="16" />
-                {{ error }}
-            </div>
-        </div>
-
-        <s-button slot="action" type="text" @click="handleCancel">取消</s-button>
-        <s-button slot="action" type="text" @click="showCaptcha ? handleCaptchaSubmit() : handleLogin()"
-            :disabled="loading">
-            {{ loading ? '处理中...' : (showCaptcha ? '确认' : '登录') }}
-        </s-button>
-    </s-dialog>
+            </f7-page-content>
+        </f7-page>
+    </f7-popup>
 </template>
 
 <style scoped>
-.login-form,
-.captcha-container {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 8px 0;
-}
-
-.input-field {
-    width: 100%;
-}
-
-.code-input-group {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-}
-
-.code-field {
-    flex: 1;
-}
-
-.send-code-btn {
-    flex-shrink: 0;
-    height: 40px;
-}
-
-.error-message {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--md-sys-color-error);
-    font-size: 0.875rem;
-    padding: 8px;
-    background-color: var(--md-sys-color-error-container);
-    border-radius: 8px;
-}
-
-.switch-btn {
-    align-self: flex-start;
-    margin-top: 8px;
-}
-
 .captcha-image {
     width: 100%;
     max-width: 300px;
     height: auto;
     border-radius: 8px;
-    border: 1px solid var(--md-sys-color-outline-variant);
+    border: 1px solid var(--f7-list-item-border-color);
 }
 </style>

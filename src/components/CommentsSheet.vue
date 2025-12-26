@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-import MaterialSymbol from './MaterialSymbol.vue';
+
 import $http from '../api/http.js';
 
 const props = defineProps({
@@ -180,429 +180,161 @@ watch(() => props.modelValue, (newVal) => {
 </script>
 
 <template>
-    <s-dialog :showed="modelValue" @close="handleClose">
-        <div slot="trigger" style="display: none;"></div>
-
-        <div class="comments-container">
+    <f7-sheet class="comments-sheet" :opened="modelValue" @sheet:closed="handleClose"
+        style="height: 90vh; border-radius: 24px 24px 0 0;" swipe-to-close backdrop>
+        <div class="sheet-modal-inner" style="height: 100%; display: flex; flex-direction: column;">
+            <!-- Header -->
             <div class="header">
                 <div v-if="expandedComment" class="header-left">
-                    <s-icon-button @click="closeRepliesView">
-                        <MaterialSymbol icon="arrow_back" />
-                    </s-icon-button>
+                    <f7-link icon-only @click="closeRepliesView">
+                        <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
+                    </f7-link>
                     <span class="title">评论回复 ({{ expandedComment.replies_count }})</span>
                 </div>
                 <div v-else class="header-left">
                     <span class="title">{{ totalComments }} 条评论</span>
                 </div>
 
-                <s-icon-button @click="handleClose">
-                    <MaterialSymbol icon="close" />
-                </s-icon-button>
+                <f7-link icon-only @click="handleClose">
+                    <f7-icon ios="f7:multiply" md="material:close" />
+                </f7-link>
             </div>
 
-            <s-scroll-view class="scroll-view">
-
+            <div class="page-content" style="flex: 1; overflow-y: auto;">
+                <!-- Replies View -->
                 <div v-if="expandedComment" class="replies-view">
+                    <!-- Simplified logic to show main comment and replies -->
                     <div class="comment-item main-comment">
-                        <img :src="expandedComment.author_avatar" class="avatar"
-                            :onerror="`this.src='https://placehold.co/40x40/6366f1/ffffff?text=U'`" />
-                        <div class="comment-content">
-                            <div class="comment-header">
-                                <span class="username">{{ expandedComment.author_name }}</span>
-                                <span class="timestamp">{{ expandedComment.created_time }}</span>
+                        <!-- ... logic remains similar but using divs ... -->
+                        <div class="display-flex padding">
+                            <img :src="expandedComment.author_avatar" class="avatar" />
+                            <div class="margin-left flex-1">
+                                <div class="font-weight-bold">{{ expandedComment.author_name }}</div>
+                                <p>{{ expandedComment.content }}</p>
                             </div>
-                            <p class="text">{{ expandedComment.content }}</p>
                         </div>
                     </div>
-
-                    <div class="replies-label">全部回复</div>
-
-                    <div class="comments-list replies-container">
-                        <div v-for="reply in expandedComment.child_comments" :key="reply.id" class="comment-item">
-                            <img :src="reply.author_avatar" class="avatar small"
-                                :onerror="`this.src='https://placehold.co/30x30/6366f1/ffffff?text=U'`" />
-                            <div class="comment-content">
-                                <div class="comment-header">
-                                    <div class="user-info">
-                                        <span class="username">{{ reply.author_name }}</span>
-                                        <span v-if="reply.reply_to_author" class="reply-badge">
-                                            <MaterialSymbol icon="arrow_right" :size="14" /> {{
-                                                reply.reply_to_author }}
-                                        </span>
+                    <div class="padding">全部回复</div>
+                    <div class="list media-list no-hairlines-md">
+                        <ul>
+                            <li v-for="reply in expandedComment.child_comments" :key="reply.id">
+                                <div class="item-content">
+                                    <div class="item-media">
+                                        <img :src="reply.author_avatar" class="avatar small" />
                                     </div>
-                                    <span class="timestamp">{{ reply.created_time }}</span>
+                                    <div class="item-inner">
+                                        <div class="item-title-row">
+                                            <div class="item-title">{{ reply.author_name }}</div>
+                                            <div class="item-after">{{ reply.created_time }}</div>
+                                        </div>
+                                        <div class="item-text">{{ reply.content }}</div>
+                                        <div
+                                            class="item-footer display-flex justify-content-space-between margin-top-half">
+                                            <f7-link small @click="emit('like', reply.id)">
+                                                <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" /> {{
+                                                reply.like_count }}
+                                            </f7-link>
+                                            <f7-link small @click="handleReply(reply)">回复</f7-link>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="text">{{ reply.content }}</p>
-                                <div class="actions">
-                                    <button class="action-btn" @click="emit('like', reply.id)">
-                                        <MaterialSymbol icon="thumb_up" :size="16" /> {{ reply.like_count }}
-                                    </button>
-                                    <button class="action-btn" @click="handleReply(reply)">
-                                        <MaterialSymbol icon="chat_bubble" :size="16" /> 回复
-                                    </button>
-                                </div>
-                            </div>
+                            </li>
+                        </ul>
+                        <div class="padding text-align-center" v-if="expandedComment.child_result?.paging?.next">
+                            <f7-button small outline @click="loadChildComments(expandedComment, true)"
+                                :loading="expandedComment.child_comments_loading">加载更多回复</f7-button>
                         </div>
-
-                        <button v-if="expandedComment.child_result?.paging?.next" class="load-more-btn"
-                            @click="loadChildComments(expandedComment, true)">
-                            <span v-if="expandedComment.child_comments_loading" class="loading-spinner">
-                                <MaterialSymbol icon="progress_activity" :size="16" class="spin" />
-                            </span>
-                            {{ expandedComment.child_comments_loading ? '正在加载...' : '加载更多回复...' }}
-                        </button>
                     </div>
                 </div>
 
+                <!-- Top Level Comments -->
                 <div v-else>
-                    <div v-if="isLoading && comments.length === 0" class="loading-state">
-                        <MaterialSymbol icon="progress_activity" :size="24" class="spin primary-color" />
-                        正在加载评论...
+                    <div v-if="isLoading && comments.length === 0" class="padding text-align-center">
+                        <f7-preloader /> 正在加载...
                     </div>
-                    <div v-else-if="error" class="error-state">
-                        <MaterialSymbol icon="error" :size="24" />
-                        {{ error }}
+                    <div v-else-if="comments.length === 0" class="padding text-align-center text-color-gray">
+                        暂无评论
                     </div>
-                    <div v-else-if="comments.length === 0" class="empty-state">
-                        暂无评论，快来抢沙发吧~
-                    </div>
-
-                    <div class="comments-list" v-else>
-                        <div v-for="comment in comments" :key="comment.id" class="comment-item">
-                            <img :src="comment.author_avatar" class="avatar"
-                                :onerror="`this.src='https://placehold.co/40x40/6366f1/ffffff?text=U'`" />
-                            <div class="comment-content">
-                                <div class="comment-header">
-                                    <div class="user-info">
-                                        <span class="username">{{ comment.author_name }}</span>
-                                        <span v-if="comment.ip_location" class="location-badge">
-                                            <MaterialSymbol icon="location_on" :size="14" /> {{ comment.ip_location
-                                            }}
-                                        </span>
+                    <div v-else class="list media-list no-hairlines-md">
+                        <ul>
+                            <li v-for="comment in comments" :key="comment.id">
+                                <div class="item-content">
+                                    <div class="item-media">
+                                        <img :src="comment.author_avatar" class="avatar" />
                                     </div>
-                                    <span class="timestamp">{{ comment.created_time }}</span>
+                                    <div class="item-inner">
+                                        <div class="item-title-row">
+                                            <div class="item-title">{{ comment.author_name }}</div>
+                                            <div class="item-after">{{ comment.created_time }}</div>
+                                        </div>
+                                        <div class="item-text">{{ comment.content }}</div>
+                                        <div class="item-footer display-flex align-items-center margin-top-half">
+                                            <f7-link small @click="emit('like', comment.id)" class="margin-right">
+                                                <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" /> {{
+                                                comment.like_count }}
+                                            </f7-link>
+                                            <f7-link small @click="handleReply(comment)"
+                                                class="margin-right">回复</f7-link>
+                                            <f7-link small v-if="comment.replies_count > 0"
+                                                @click="openRepliesView(comment)">查看 {{ comment.replies_count }} 条回复
+                                                <f7-icon ios="f7:chevron_right" md="material:chevron_right" size="14" />
+                                            </f7-link>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="text">{{ comment.content }}</p>
-
-                                <div class="actions">
-                                    <button class="action-btn" @click="emit('like', comment.id)">
-                                        <MaterialSymbol icon="thumb_up" :size="16" /> {{ comment.like_count }}
-                                    </button>
-                                    <button class="action-btn" @click="handleReply(comment)">
-                                        <MaterialSymbol icon="chat_bubble" :size="16" /> 回复
-                                    </button>
-                                </div>
-
-                                <!-- 子评论切换按钮 -->
-                                <div v-if="comment.replies_count > 0" class="replies-toggle">
-                                    <button class="toggle-btn" @click="openRepliesView(comment)">
-                                        查看全部 {{ comment.replies_count }} 条回复
-                                        <MaterialSymbol icon="chevron_right" :size="16" />
-                                    </button>
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <!-- 顶层加载更多 -->
-                        <div v-if="topResult?.paging?.next" class="text-center mt-4">
-                            <button class="load-more-btn" :disabled="isLoading" @click="loadTopComments(true)">
-                                <span v-if="isLoading" class="loading-spinner mr-2">
-                                    <MaterialSymbol icon="progress_activity" :size="16" class="spin" />
-                                </span>
-                                {{ isLoading ? '正在加载更多评论...' : '加载更多评论' }}
-                            </button>
+                            </li>
+                        </ul>
+                        <div class="padding text-align-center" v-if="topResult?.paging?.next">
+                            <f7-button outline @click="loadTopComments(true)" :loading="isLoading">加载更多评论</f7-button>
                         </div>
                     </div>
                 </div>
-            </s-scroll-view>
+            </div>
 
-            <div class="footer">
-                <div v-if="replyTo" class="reply-context">
-                    <span>回复: @{{ replyTo }}</span>
-                    <button @click="clearReply" class="close-reply">
-                        <MaterialSymbol icon="close" :size="16" />
-                    </button>
-                </div>
-                <s-text-field :label="replyTo ? `回复 ${replyTo}...` : '友善评论，精彩互动...'" v-model="replyContent"
-                    class="input-field">
-                    <s-icon-button type="filled" class="send-btn" slot="end">
-                        <MaterialSymbol icon="send" :size="18" />
-                    </s-icon-button>
-
-                </s-text-field>
+            <!-- Footer Input -->
+            <div class="footer padding display-flex align-items-center bg-color-white"
+                style="border-top: 1px solid rgba(0,0,0,0.1)">
+                <input type="text" v-model="replyContent" :placeholder="replyTo ? `回复 ${replyTo}...` : '说点什么...'"
+                    style="flex:1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; margin-right: 8px;">
+                <f7-link icon-only class="color-primary">
+                    <f7-icon ios="f7:paperplane_fill" md="material:send" />
+                </f7-link>
             </div>
         </div>
-    </s-dialog>
+    </f7-sheet>
 </template>
 
 <style scoped>
-.comments-container {
-    display: flex;
-    flex-direction: column;
-    height: 85vh;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
-    overflow: hidden;
-    width: 50vw;
-}
-
 .header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    align-items: center;
+    padding: 16px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-.title {
-    font-size: 1.125rem;
     font-weight: bold;
-}
-
-.scroll-view {
-    flex: 1;
-    width: 100%;
-}
-
-.comments-list {
-    padding: 16px;
-    padding-bottom: 80px;
-}
-
-.replies-view {
-    padding-bottom: 80px;
-}
-
-.main-comment {
-    padding: 16px;
-}
-
-.replies-label {
-    padding: 12px 16px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: var(--md-sys-color-on-surface);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.replies-container {
-    padding-top: 0;
-}
-
-.empty-state,
-.loading-state,
-.error-state {
-    padding: 40px 0;
-    text-align: center;
-    opacity: 0.7;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.comment-item {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-}
-
-.comment-item:last-child {
-    margin-bottom: 0;
+    font-size: 1.1em;
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    flex-shrink: 0;
 }
 
 .avatar.small {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
 }
 
-.comment-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.comment-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.username {
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface);
-}
-
-.location-badge {
-    font-size: 0.75rem;
-    color: var(--md-sys-color-tertiary);
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    background-color: var(--md-sys-color-tertiary-container);
-    opacity: 0.8;
-}
-
-.reply-badge {
-    font-size: 0.75rem;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.7;
-    display: flex;
-    align-items: center;
-    background-color: var(--md-sys-color-surface-container);
-    padding: 2px 4px;
-    border-radius: 4px;
-}
-
-.timestamp {
-    font-size: 0.75rem;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.5;
-}
-
-.text {
-    font-size: 0.9375rem;
-    line-height: 1.5;
-    color: var(--md-sys-color-on-surface-variant);
-    margin: 0;
-    word-break: break-word;
-}
-
-.actions {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    margin-top: 8px;
-}
-
-.action-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 0.75rem;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.5;
-    cursor: pointer;
-    transition: color 0.2s, opacity 0.2s;
-}
-
-.action-btn:hover {
-    opacity: 1;
-    color: var(--md-sys-color-primary);
-}
-
-.replies-toggle {
-    margin-top: 8px;
-}
-
-.toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--md-sys-color-surface-container-low);
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--md-sys-color-primary);
-    cursor: pointer;
-    transition: opacity 0.2s, background-color 0.2s;
-}
-
-.toggle-btn:hover {
-    background-color: var(--md-sys-color-surface-container);
-}
-
-.load-more-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    background: var(--md-sys-color-surface-container);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    padding: 8px 16px;
-    font-size: 0.875rem;
-    color: var(--md-sys-color-on-surface-variant);
-    border-radius: 9999px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin: 16px auto;
-    width: fit-content;
-}
-
-.load-more-btn:hover:not(:disabled) {
-    background-color: var(--md-sys-color-surface-container-high);
-}
-
-.load-more-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.loading-spinner {
-    display: inline-flex;
-    align-items: center;
-}
-
-.spin {
-    animation: spin 1s linear infinite;
-}
-
-.footer {
-    padding: 12px 16px;
-    background-color: var(--md-sys-color-surface);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.close-reply {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    color: inherit;
-    display: flex;
-}
-
-.input-field {
-    display: grid;
-    width: 100%;
-}
-
-.send-btn {
-    width: 36px;
-    height: 36px;
+.item-text {
+    color: var(--f7-text-color);
+    margin-top: 4px;
 }
 </style>

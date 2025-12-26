@@ -6,6 +6,10 @@ const apiVersion = "101_1_1.0"
 const appBuild = "21210"
 const appBundle = "com.zhihu.android"
 
+function getMsid() {
+    return localStorage.getItem('zhihu_msid') || 'DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1';
+}
+
 class ZhihuRequest {
     constructor({ encryptData, loginData, zsts = {}, defaultHeaders = {} }) {
         if (typeof encryptData !== 'function') {
@@ -13,17 +17,14 @@ class ZhihuRequest {
         }
 
         console.log('BindLoginData:', loginData);
-        this.udid = loginData.udid;
-        if (!this.udid) {
-            console.warn("提供 loginData 缺少 udid，推荐使用游客登录获取 udid");
-            //throw new Error("提供 loginData 缺少 udid，请先使用游客登录获取 udid");
-        }
+        this.udid = this.getUdid();
 
         loginData = loginData.guest || loginData;
         this.accessToken = "Bearer " + loginData.access_token;
         if (loginData.udid) {
             this.cookie["d_c0"] = loginData.udid;
         }
+
         this.cookie = Object.entries(loginData.cookie || {})
             .filter(([_, v]) => v)
             .map(([k, v]) => `${k}=${v}`)
@@ -45,6 +46,7 @@ class ZhihuRequest {
             ...(this.cookie && { "Cookie": this.cookie }),
             ...(this.accessToken && { "Authorization": this.accessToken }),
             ...(this.udid && { "x-udid": this.udid }),
+            ...(getMsid() && { "x-ms-id": getMsid() }),
             ...(this.zst81 && { "X-ZST-81": this.zst81 }),
             ...(this.zst82 && { "X-ZST-82": this.zst82 }),
             ...defaultHeaders,
@@ -66,12 +68,17 @@ class ZhihuRequest {
 
     }
 
+    getUdid() {
+        if (!this.udid) {
+            this.udid = "UraTB9TKRhtLBYAOB4UmHKrPn18Tg811TFQ=";
+            console.warn("提供 loginData 缺少 udid，推荐使用游客登录获取 udid，未绑定 udid，使用默认 udid");
+        }
+        return this.udid;
+    }
+
     updateLoginData(loginData, zsts = {}, defaultHeaders = {}) {
         console.log('UpdateLoginData:', loginData);
-
-        if (loginData.udid) {
-            this.udid = loginData.udid;
-        }
+        this.udid = this.getUdid();
 
         loginData = loginData.guest || loginData;
         this.accessToken = "Bearer " + loginData.access_token;
@@ -95,6 +102,7 @@ class ZhihuRequest {
             "x-Zse-93": apiVersion,
             ...(this.cookie && { "Cookie": this.cookie }),
             ...(this.accessToken && { "Authorization": this.accessToken }),
+            ...(getMsid() && { "x-msid": getMsid() }),
             ...(this.udid && { "x-udid": this.udid }),
             ...(this.zst81 && { "X-ZST-81": this.zst81 }),
             ...(this.zst82 && { "X-ZST-82": this.zst82 }),

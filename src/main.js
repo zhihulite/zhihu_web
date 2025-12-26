@@ -3,17 +3,29 @@ if (!typeof GM_xmlhttpRequest === 'function') {
     window.location.href = 'https://greasyfork.org/scripts/508709';
 }
 
-import { createApp } from 'vue'
-import 'sober' //引入所有组件
-import './style.css'
-import App from './App.vue'
+import { createApp } from 'vue';
+import Framework7 from 'framework7/lite-bundle';
+import Framework7Vue, { registerComponents } from 'framework7-vue/bundle';
+import 'framework7/css/bundle';
 
-import router from './router'
+// Import Icons and App Custom Styles
+import './css/icons.css';
+import './css/app.css';
 
-import http, { initZhihu, getZhihuInstance } from '@/api/http.js';
-// 每次打开网页时尝试更新用户数据
-await initZhihu();
-window.$http = http;
-window.$zhihu = getZhihuInstance();
+import './style.css';
+import App from './App.vue';
+import $http from './api/http.js';
+import * as zhihuModule from './api/utils/zhihu-module.js';
 
-createApp(App).use(router).mount('#app')
+// Init Framework7-Vue Plugin
+Framework7.use(Framework7Vue);
+
+const app = createApp(App);
+
+// Register Framework7 Vue Components
+registerComponents(app);
+await zhihuModule.initZhihu()
+window.$http = $http;
+window.$zhihu = zhihuModule;
+
+app.mount('#app');

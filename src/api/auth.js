@@ -114,14 +114,14 @@ function getTimestamp() {
 
 // 获取验证码
 export async function getCaptcha() {
-    const response = await $zhihu.get('https://api.zhihu.com/captcha');
+    const response = await $http.get('https://api.zhihu.com/captcha');
     return response;
 }
 
 // 获取验证码图片（返回base64）
 export async function getCaptchaImage(captchaTicket) {
     try {
-        const response = await $zhihu.put('https://api.zhihu.com/captcha', null, {
+        const response = await $http.put('https://api.zhihu.com/captcha', null, {
             headers: {
                 'Cookie': `capsion_ticket=${captchaTicket}`
             }
@@ -139,7 +139,7 @@ export async function getCaptchaImage(captchaTicket) {
 export async function submitCaptcha(inputText, captchaTicket) {
     const body = `input_text=${encodeURIComponent(inputText)}`;
 
-    const response = await $zhihu.request('POST', 'https://api.zhihu.com/captcha', body, {
+    const response = await $http.post('https://api.zhihu.com/captcha', body, {
         headers: {
             'Cookie': `capsion_ticket=${captchaTicket}`,
         },
@@ -173,7 +173,7 @@ export async function loginWithPassword(phone, password, captchaTicket = '') {
         headers['Cookie'] = `capsion_ticket=${captchaTicket}`;
     }
 
-    const data = await $zhihu.post('https://api.zhihu.com/api/account/prod/sign_in', body, { headers });
+    const data = await $http.post('https://api.zhihu.com/api/account/prod/sign_in', body, { headers });
 
     if (data.access_token) {
         tokenManager.saveTokens(
@@ -211,7 +211,7 @@ export async function loginWithCode(phone, code, captchaTicket = '') {
         headers['Cookie'] = `capsion_ticket=${captchaTicket}`;
     }
 
-    const data = await $zhihu.post('https://api.zhihu.com/api/account/prod/sign_in', body, { headers });
+    const data = await $http.post('https://api.zhihu.com/api/account/prod/sign_in', body, { headers });
 
     if (data.access_token) {
         tokenManager.saveTokens(
@@ -246,7 +246,7 @@ export async function refreshAccessToken() {
         timestamp: timestamp.toString()
     }).toString();
 
-    const data = await $zhihu.post('https://api.zhihu.com/api/account/prod/sign_in', body,
+    const data = await $http.post('https://api.zhihu.com/api/account/prod/sign_in', body,
         {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -279,7 +279,7 @@ export async function sendSmsCode(phone, captchaTicket) {
         headers['Cookie'] = `capsion_ticket=${captchaTicket}`;
     }
 
-    const response = await $zhihu.post('https://api.zhihu.com/api/account/prod/auth/digits', body,
+    const response = await $http.post('https://api.zhihu.com/api/account/prod/auth/digits', body,
         {
             headers: headers
         });
@@ -294,7 +294,7 @@ export async function logout() {
         use_refresh_direct_sign: '0'
     }).toString();
 
-    const response = await $zhihu.post('https://api.zhihu.com/api/account/prod/client_logout', body,
+    const response = await $http.post('https://api.zhihu.com/api/account/prod/client_logout', body,
         {
             headers: {}
         });

@@ -1,7 +1,6 @@
 <script setup>
 import FeedCard from '../FeedCard.vue';
-import PullToRefresh from '../PullToRefresh.vue';
-import MaterialSymbol from '../MaterialSymbol.vue';
+
 
 defineProps({
     items: Array,
@@ -19,25 +18,23 @@ defineProps({
             <div class="header">
                 <h1 class="title">历史记录</h1>
                 <s-button type="filled-tonal" @click="onClear">
-                    <MaterialSymbol icon="delete_sweep" slot="icon" /> 清空
+                    <f7-icon ios="f7:trash_fill" md="material:delete_sweep" slot="icon" /> 清空
                 </s-button>
             </div>
             <div class="content">
-                <PullToRefresh :onRefresh="onRefresh">
-                    <div class="scroller">
-                        <div v-if="items.length === 0" class="empty-state">
-                            <MaterialSymbol icon="history" :size="40" class="empty-icon" />
-                            <p>暂无历史</p>
-                        </div>
-                        <div v-else class="card-grid">
-                            <div class="masonry-item" v-for="(item, index) in items"
-                                :key="'history-' + item.id + '-' + index">
-                                <FeedCard :item="item" @click="onArticleClick(item)" @userClick="onUserClick"
-                                    @commentClick="onCommentClick" />
-                            </div>
+                <div class="scroller">
+                    <div v-if="items.length === 0" class="empty-state">
+                        <f7-icon ios="f7:clock" md="material:history" size="40" class="empty-icon" />
+                        <p>暂无历史</p>
+                    </div>
+                    <div v-else class="card-grid">
+                        <div class="masonry-item" v-for="(item, index) in items"
+                            :key="'history-' + item.id + '-' + index">
+                            <FeedCard :item="item" @click="onArticleClick(item)" @userClick="onUserClick"
+                                @commentClick="onCommentClick" />
                         </div>
                     </div>
-                </PullToRefresh>
+                </div>
             </div>
         </div>
     </div>

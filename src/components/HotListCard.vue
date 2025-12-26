@@ -4,18 +4,20 @@ defineEmits(['click'])
 </script>
 
 <template>
-    <s-card clickable="true" class="hot-card" @click="$emit('click', item)">
-        <div class="rank-badge" :class="{ 'top-3': rank <= 3, 'top-1': rank === 1 }">
-            {{ rank }}
-        </div>
-        <div class="content">
-            <div class="title">{{ item.title }}</div>
-            <div class="metrics">{{ item.metrics }}</div>
-        </div>
-        <div v-if="item.thumbnailSrc" class="thumbnail-container">
-            <img :src="item.thumbnailSrc" class="thumbnail" :onerror="`this.style.display='none'`" />
-        </div>
-    </s-card>
+    <f7-card class="hot-card" @click="$emit('click', item)">
+        <f7-card-content class="display-flex align-items-center" style="padding: 16px;">
+            <div class="rank-badge" :class="{ 'top-3': rank <= 3, 'top-1': rank === 1 }">
+                {{ rank }}
+            </div>
+            <div class="content">
+                <div class="title">{{ item.title }}</div>
+                <div class="metrics">{{ item.metrics }}</div>
+            </div>
+            <div v-if="item.thumbnailSrc" class="thumbnail-container">
+                <img :src="item.thumbnailSrc" class="thumbnail" :onerror="`this.style.display='none'`" />
+            </div>
+        </f7-card-content>
+    </f7-card>
 </template>
 
 <style scoped>

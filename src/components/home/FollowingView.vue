@@ -1,19 +1,18 @@
 <script setup>
 import { ref } from 'vue';
-import MobileTabLayout from '../MobileTabLayout.vue';
+import TabLayout from '../TabLayout.vue';
 import QuestionsContent from './QuestionsContent.vue';
 import CollectionsListContent from './CollectionsListContent.vue';
 import { HOT_DATA } from '../../services/mockData';
-import { useRouter } from 'vue-router';
+import { f7 } from 'framework7-vue';
 
 const sidebarFollowingTab = ref('questions');
-const router = useRouter();
 
 const handleArticleClick = (item) => {
     if (item.type === 'answer' && item.questionId) {
-        router.push(`/question/${item.questionId}`);
+        f7.view.main.router.navigate(`/question/${item.questionId}`);
     } else {
-        router.push(`/article/${item.id}`);
+        f7.view.main.router.navigate(`/article/${item.id}`);
     }
 };
 
@@ -27,7 +26,7 @@ const handleRefresh = async () => {
         <div class="container">
             <h1 class="page-title">我的关注</h1>
             <div class="content-wrapper">
-                <MobileTabLayout :tabs="[
+                <TabLayout :tabs="[
                     { id: 'questions', label: '关注的问题' },
                     { id: 'collections', label: '关注的收藏' }
                 ]" :activeId="sidebarFollowingTab" :onChange="(id) => sidebarFollowingTab = id">
@@ -38,7 +37,7 @@ const handleRefresh = async () => {
                     <template #collections>
                         <CollectionsListContent :onRefresh="handleRefresh" />
                     </template>
-                </MobileTabLayout>
+                </TabLayout>
             </div>
         </div>
     </div>

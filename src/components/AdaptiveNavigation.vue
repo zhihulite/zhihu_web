@@ -1,8 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import MaterialSymbol from './MaterialSymbol.vue';
-import { useUser } from '@/composables/userManager';
+import { f7, f7ready } from 'framework7-vue';
+import { f7Page, f7Icon } from 'framework7-vue';
 
 const props = defineProps({
     onLogout: {
@@ -15,137 +14,116 @@ const props = defineProps({
     }
 });
 
-const router = useRouter();
-const route = useRoute();
-const isMobile = ref(false);
-const { refreshUser } = useUser();
-
-const handleRefresh = async () => {
-    await refreshUser();
-    if (isMobile.value) {
-        const drawer = document.querySelector('s-drawer');
-        if (drawer) drawer.showed = false;
-    }
-};
-
-const checkIsMobile = () => {
-    if (typeof window !== 'undefined') {
-        isMobile.value = window.innerWidth < 768;
-    }
-};
-
-onMounted(() => {
-    checkIsMobile();
-    window.addEventListener('resize', checkIsMobile);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('resize', checkIsMobile);
-});
+const currentPath = ref('/');
 
 const NAV_ITEMS = [
-    { id: 'home', label: '主页', icon: 'home', path: '/' },
-    { id: 'following', label: '关注', icon: 'group', path: '/following' },
-    { id: 'collections', label: '收藏', icon: 'bookmark', path: '/collections' },
-    { id: 'daily', label: '日报', icon: 'newspaper', path: '/daily' },
-    { id: 'history', label: '历史', icon: 'history', path: '/history' },
-    { id: 'refresh', label: '刷新', icon: 'refresh', action: handleRefresh },
-    { id: 'settings', label: '设置', icon: 'settings', path: '/settings' },
+    { id: 'home', label: '主页', path: '/', icon: { ios: 'f7:house_fill', md: 'material:home' } },
+    { id: 'following', label: '关注', path: '/following', icon: { ios: 'f7:person_2_fill', md: 'material:people' } },
+    { id: 'collections', label: '收藏', path: '/collections', icon: { ios: 'f7:bookmark_fill', md: 'material:bookmark' } },
+    { id: 'daily', label: '日报', path: '/daily', icon: { ios: 'f7:newspaper_fill', md: 'material:article' } },
+    { id: 'history', label: '历史', path: '/history', icon: { ios: 'f7:clock_fill', md: 'material:history' } },
+    { id: 'settings', label: '设置', path: '/settings', icon: { ios: 'f7:gear_fill', md: 'material:settings' } }
 ];
 
 const handleNavigate = (item) => {
+    if (f7.panel.get('left') && f7.panel.get('left').opened && window.innerWidth < 768) {
+        f7.panel.close('left');
+    }
+
     if (item.action) {
         item.action();
     } else if (item.path) {
-        router.push(item.path);
-        if (isMobile.value) {
-            const drawer = document.querySelector('s-drawer');
-            if (drawer) drawer.showed = false;
-        }
+        f7.view.main.router.navigate(item.path);
     }
 };
 
 const handleMobileMoreClick = () => {
-    props.onMoreClick();
-    if (isMobile.value) {
-        const drawer = document.querySelector('s-drawer');
-        if (drawer) drawer.showed = false;
+    if (f7.panel.get('left') && f7.panel.get('left').opened && window.innerWidth < 768) {
+        f7.panel.close('left');
     }
+    props.onMoreClick();
 };
 
 const isSelected = (path) => {
     if (!path) return false;
-    if (path === '/' && route.path === '/') return true;
-    if (path !== '/' && route.path.startsWith(path)) return true;
+    if (path === '/' && currentPath.value === '/') return true;
+    if (path !== '/' && currentPath.value.startsWith(path)) return true;
     return false;
 };
+
+const updateCurrentPath = (route) => {
+    currentPath.value = route.path || route.url || '/';
+};
+
+onMounted(() => {
+    f7ready(() => {
+        window.testf7 = f7
+        if (f7.view.main && f7.view.main.router) {
+            currentPath.value = f7.view.main.router.currentRoute?.path || '/';
+
+            f7.view.main.router.on('routeChange', (newRoute) => {
+                updateCurrentPath(newRoute);
+            });
+        }
+    });
+});
 </script>
 
 <template>
-    <s-scroll-view v-if="isMobile">
-        <s-menu style="width: 100%; max-width: none; margin: 0; height: 100%; border: none;">
+    <div class="nav-wrapper">
+        <div class="logo-box">Z</div>
 
-            <s-menu-item v-for="item in NAV_ITEMS" :key="item.id" :checked="isSelected(item.path)"
-                @click="handleNavigate(item)">
-                <MaterialSymbol slot="start" :icon="item.icon" />
-                {{ item.label }}
-            </s-menu-item>
+        <f7-list menu-list>
+            <f7-list-item v-for="item in NAV_ITEMS" :key="item.id" :title="item.label" link
+                :selected="isSelected(item.path)" @click="handleNavigate(item)">
+                <template #media>
+                    <f7-icon :ios="item.icon.ios" :md="item.icon.md" />
+                </template>
+            </f7-list-item>
+        </f7-list>
 
-            <s-divider></s-divider>
+        <div class="spacer"></div>
 
-            <s-menu-item @click="handleMobileMoreClick">
-                <MaterialSymbol slot="start" icon="menu" />
-                更多
-            </s-menu-item>
-
-            <s-menu-item @click="onLogout">
-                <MaterialSymbol slot="start" icon="logout" />
-                退出登录
-            </s-menu-item>
-
-        </s-menu>
-    </s-scroll-view>
-
-    <s-navigation v-else mode="rail" style="height: 100%; border: none; background-color: transparent;">
-        <s-avatar class="logo-box">Z</s-avatar>
-
-        <s-navigation-item v-for="item in NAV_ITEMS" :key="item.id" :selected="isSelected(item.path)"
-            @click="handleNavigate(item)">
-            <MaterialSymbol slot="icon" :icon="item.icon" :fill="isSelected(item.path)" />
-            <div slot="text">{{ item.label }}</div>
-        </s-navigation-item>
-
-        <div slot="end" class="rail-footer">
-            <s-icon-button @click="onMoreClick" type="standard">
-                <MaterialSymbol icon="menu" />
-            </s-icon-button>
-
-            <s-icon-button type="outlined" @click="onLogout">
-                <MaterialSymbol icon="logout" />
-            </s-icon-button>
-        </div>
-    </s-navigation>
+        <f7-list menu-list class="footer-list">
+            <f7-list-item title="更多" link @click="handleMobileMoreClick">
+                <template #media>
+                    <f7-icon ios="f7:menu" md="material:menu"></f7-icon>
+                </template>
+            </f7-list-item>
+            <f7-list-item title="退出登录" link @click="onLogout">
+                <template #media>
+                    <f7-icon ios="f7:arrow_right_square" md="material:logout"></f7-icon>
+                </template>
+            </f7-list-item>
+        </f7-list>
+    </div>
 </template>
 
 <style scoped>
-.logo-box {
-    margin-top: 24px;
-    margin-bottom: 8px;
-    border-radius: 12px;
-    font-weight: bold;
-    font-size: 1.25rem;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    user-select: none;
-}
-
-.rail-footer {
+.nav-wrapper {
+    height: 100%;
     display: flex;
     flex-direction: column;
+    padding: 16px 0;
+    box-sizing: border-box;
+}
+
+.logo-box {
+    margin: 0 16px 16px 16px;
+    width: 48px;
+    height: 48px;
+    background: var(--f7-theme-color);
+    color: white;
+    border-radius: 12px;
+    display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 16px;
-    padding-bottom: 24px;
-    width: 100%;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.spacer {
+    flex: 1;
 }
 </style>

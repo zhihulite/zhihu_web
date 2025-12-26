@@ -1,13 +1,13 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import MaterialSymbol from './MaterialSymbol.vue';
 import ContentRenderer from './ContentRenderer.vue';
 import CommentsSheet from './CommentsSheet.vue';
 import $http from '../api/http.js';
 
-const route = useRoute();
-const router = useRouter();
+const props = defineProps({
+    f7route: Object,
+    f7router: Object
+});
 
 const item = ref(null);
 const loading = ref(true);
@@ -18,8 +18,35 @@ const isTocExpanded = ref(false);
 const scrollRef = ref(null);
 const imageList = ref([]);
 const activeImage = ref(0);
+const photoBrowserPhotos = ref([]);
+const photoBrowserRef = ref(null);
 
-const { type, id } = route.params;
+const handleImageClick = (data) => {
+    const urls = data.allUrls || [data.url];
+    photoBrowserPhotos.value = urls.map(url => ({
+        url: url,
+        caption: ''
+    }));
+
+    // Use nextTick to ensure the ref is updated if needed, 
+    // although for Photo Browser we usually just call .open(index)
+    nextTick(() => {
+        if (photoBrowserRef.value) {
+            photoBrowserRef.value.open(data.index || 0);
+        }
+    });
+};
+
+const handleGalleryImageClick = (index) => {
+    handleImageClick({
+        url: imageList.value[index].url,
+        index: index,
+        allUrls: imageList.value.map(img => img.url)
+    });
+};
+
+const type = props.f7route?.params?.type;
+const id = props.f7route?.params?.id;
 
 const visibleTocItems = computed(() => {
     if (tocItems.value.length <= 3 || isTocExpanded.value) {
@@ -33,7 +60,7 @@ const fetchData = async () => {
     try {
         const apiType = type === 'p' ? 'article' : type;
 
-        const data = await $zhihu.get(`https://api.zhihu.com/${apiType}s/v2/${id}`);
+        const data = await $http.get(`https://api.zhihu.com/${apiType}s/v2/${id}`);
 
         let segs = data.structured_content?.segments ? [...data.structured_content.segments] : [];
         if (data.relationship_tips) segs.unshift({ type: 'myapptip', myapptip: { text: data.relationship_tips.text } });
@@ -114,52 +141,47 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="article-detail">
-        <div v-if="loading" class="loading-container">
-            <s-circular-progress indeterminate="true"></s-circular-progress>
+    <f7-page class="article-detail">
+        <f7-navbar>
+            <f7-nav-left>
+                <f7-link icon-only @click="f7router.back()">
+                    <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
+                </f7-link>
+            </f7-nav-left>
+            <f7-nav-title v-if="item">{{ item.title }}</f7-nav-title>
+            <f7-nav-right>
+                <f7-link icon-only>
+                    <f7-icon ios="f7:ellipsis_circle" md="material:more_horiz" />
+                </f7-link>
+            </f7-nav-right>
+        </f7-navbar>
+
+        <div v-if="loading" class="loading-container display-flex justify-content-center align-items-center"
+            style="height: 100%;">
+            <f7-preloader />
         </div>
 
-        <template v-else-if="item">
-            <div class="top-bar glass">
-                <div class="left-actions">
-                    <s-icon-button @click="router.back()">
-                        <MaterialSymbol icon="arrow_back" />
-                    </s-icon-button>
-                    <span class="article-title">{{ item.title }}</span>
-                </div>
-                <div class="right-actions">
-                    <s-icon-button>
-                        <MaterialSymbol icon="more_horiz" />
-                    </s-icon-button>
-                </div>
+        <f7-page-content v-else-if="item" class="padding-bottom full-content">
+
+            <div v-if="item.imageUrl" class="hero-image-container">
+                <img :src="item.imageUrl" class="hero-image" />
+                <div class="hero-gradient"></div>
             </div>
 
-            <s-card v-if="showToc" class="toc-popover glass">
-                <div class="toc-title">目录</div>
-                <s-scroll-view class="toc-list">
-                    <div v-for="toc in tocItems" :key="toc.id" class="toc-item" @click="scrollToHeading(toc.id)">
-                        {{ toc.text }}
-                    </div>
-                </s-scroll-view>
-            </s-card>
-
-            <s-scroll-view class="main-scroll">
-                <div v-if="item.imageUrl" class="hero-image-container">
-                    <img :src="item.imageUrl" class="hero-image" />
-                    <div class="hero-gradient"></div>
-                </div>
-
-                <div class="content-wrapper">
-
-                    <s-card clickable="true" @click="router.push(`/user/${item.authorId}`)" class="author-card">
+            <div class="content-wrapper">
+                <f7-card class="author-card" @click="f7router.navigate(`/user/${item.authorId}`)">
+                    <f7-card-content padding="false" class="display-flex align-items-center padding">
                         <img :src="item.avatarUrl" class="card-avatar" />
-                        <div class="card-info">
+                        <div class="card-info margin-left">
                             <div class="card-name">{{ item.author }}</div>
                             <div class="card-desc">知乎用户</div>
                         </div>
-                    </s-card>
+                    </f7-card-content>
+                </f7-card>
 
-                    <s-card v-if="tocItems.length > 0" class="toc-card">
+                <!-- TOC Card -->
+                <f7-card v-if="tocItems.length > 0" class="toc-card">
+                    <f7-card-content>
                         <div class="toc-header">目录</div>
                         <div v-for="toc in visibleTocItems" :key="toc.id" class="toc-link"
                             @click="scrollToHeading(toc.id)">
@@ -167,58 +189,67 @@ onMounted(() => {
                         </div>
                         <div v-if="tocItems.length > 3" class="toc-toggle" @click="isTocExpanded = !isTocExpanded">
                             <span>{{ isTocExpanded ? '收起' : '展开更多' }}</span>
-                            <MaterialSymbol :icon="isTocExpanded ? 'expand_less' : 'expand_more'" class="toggle-icon" />
+                            <f7-icon :ios="isTocExpanded ? 'f7:chevron_up' : 'f7:chevron_down'"
+                                :md="isTocExpanded ? 'material:expand_less' : 'material:expand_more'"
+                                class="toggle-icon" />
                         </div>
-                    </s-card>
+                    </f7-card-content>
+                </f7-card>
 
-                    <ContentRenderer :segments="item.structured_content" />
+                <ContentRenderer :segments="item.structured_content" @imageClick="handleImageClick" />
 
-                    <div v-if="imageList.length > 0" class="image-gallery">
-                        <s-carousel v-model.lazy="activeImage">
-                            <s-carousel-item v-for="(img, index) in imageList" :key="index" :value="index" :style="{
-                                backgroundImage: `url(${img.url})`,
-                                backgroundSize: 'contain',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'center',
-                            }"></s-carousel-item>
-                        </s-carousel>
-                    </div>
-                </div>
-            </s-scroll-view>
-
-            <div class="bottom-float-container">
-                <div class="float-bar glass">
-                    <div class="action-group">
-                        <s-icon-button>
-                            <MaterialSymbol icon="thumb_up" :size="20" />
-                        </s-icon-button>
-                        <span class="action-count">{{ formatCount(item.metrics.votes) }}</span>
-                    </div>
-
-                    <div class="vertical-divider"></div>
-
-                    <div class="action-group" @click="showComments = true">
-                        <s-icon-button>
-                            <MaterialSymbol icon="chat_bubble" :size="20" />
-                        </s-icon-button>
-                        <span class="action-count">{{ formatCount(item.metrics.comments) }}</span>
-                    </div>
-
-                    <div class="vertical-divider"></div>
-
-                    <s-icon-button>
-                        <MaterialSymbol icon="bookmark" :size="20" />
-                    </s-icon-button>
-
-                    <s-icon-button>
-                        <MaterialSymbol icon="share" :size="20" />
-                    </s-icon-button>
+                <div v-if="imageList.length > 0" class="image-gallery margin-top">
+                    <f7-swiper pagination>
+                        <f7-swiper-slide v-for="(img, index) in imageList" :key="index">
+                            <img :src="img.url" style="width:100%; object-fit:contain; cursor: pointer;"
+                                @click="handleGalleryImageClick(index)" />
+                        </f7-swiper-slide>
+                    </f7-swiper>
                 </div>
             </div>
+        </f7-page-content>
 
-            <CommentsSheet v-model="showComments" :resourceId="id" :resourceType="type" />
-        </template>
-    </div>
+        <!-- Bottom Float Bar logic inside page to float -->
+        <div v-if="item" class="bottom-float-container">
+            <div class="float-bar glass">
+                <div class="action-group">
+                    <f7-link icon-only>
+                        <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="20" />
+                    </f7-link>
+                    <span class="action-count">{{ formatCount(item.metrics.votes) }}</span>
+                </div>
+
+                <div class="vertical-divider"></div>
+
+                <div class="action-group" @click="showComments = true">
+                    <f7-link icon-only>
+                        <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="20" />
+                    </f7-link>
+                    <span class="action-count">{{ formatCount(item.metrics.comments) }}</span>
+                </div>
+
+                <div class="vertical-divider"></div>
+
+                <f7-link icon-only>
+                    <f7-icon ios="f7:bookmark" md="material:bookmark" size="20" />
+                </f7-link>
+            </div>
+        </div>
+
+        <CommentsSheet v-model="showComments" :resourceId="id" :resourceType="type" />
+
+        <f7-popover class="toc-popover" :opened="showToc" @popover:closed="showToc = false">
+            <div class="display-flex justify-content-between align-items-center padding">
+                <div class="font-weight-bold">目录</div>
+            </div>
+            <f7-list>
+                <f7-list-item v-for="toc in tocItems" :key="toc.id" :title="toc.text" link
+                    @click="scrollToHeading(toc.id)" popover-close />
+            </f7-list>
+        </f7-popover>
+
+        <f7-photo-browser ref="photoBrowserRef" :photos="photoBrowserPhotos" theme="dark" />
+    </f7-page>
 </template>
 
 <style scoped>
@@ -405,7 +436,7 @@ onMounted(() => {
 }
 
 .bottom-float-container {
-    position: fixed;
+    position: absolute;
     bottom: 24px;
     left: 0;
     right: 0;
@@ -419,24 +450,36 @@ onMounted(() => {
     pointer-events: auto;
     display: flex;
     align-items: center;
-    padding: 8px 16px;
+    padding: 8px 24px;
     border-radius: 50px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    gap: 12px;
 }
 
 .action-group {
     display: flex;
     align-items: center;
     cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.action-group:active {
+    opacity: 0.6;
 }
 
 .action-count {
-    font-size: 0.75rem;
-    font-weight: bold;
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--md-sys-color-on-surface-variant);
-    margin-left: -4px;
-    min-width: 24px;
-    text-align: center;
+    margin-left: 2px;
+    min-width: 20px;
+}
+
+.vertical-divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--md-sys-color-outline-variant);
+    margin: 0 4px;
 }
 
 .toc-card {
