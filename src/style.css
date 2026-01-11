@@ -37,8 +37,12 @@ body {
   padding-bottom: 0 !important;
 }
 
-.tab-bar.tab-bar-nested {
+.tab-bar-static {
   top: 0 !important;
+}
+
+.tab-layout.nested .page-content {
+  padding-bottom: var(--f7-toolbar-height);
 }
 
 .tabs-auto-page-content .tab .page-content {

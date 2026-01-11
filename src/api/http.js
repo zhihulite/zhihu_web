@@ -6,13 +6,25 @@ import {
 
 class PaginatedResult {
 	constructor(data, paging, options) {
-		this.data = data;
+		this._data = data;
 		this.paging = paging || {
 			next: null,
-			prev: null,
+			previous: null,
 			is_end: false,
 		};
 		this.options = options;
+		this._consumed = false;
+	}
+
+	get data() {
+		if (this._consumed) {
+			throw new Error('PaginatedResult.data 已被消费');
+		}
+
+		this._consumed = true;
+		const data = this._data;
+		this._data = null;
+		return data;
 	}
 
 	async next() {
@@ -23,15 +35,15 @@ class PaginatedResult {
 	}
 
 	async prev() {
-		if (!this.paging.prev) return null;
+		if (!this.paging.previous) return null;
 		const zhihuRequest = getZhihuInstance();
-		const res = await zhihuRequest.get(this.paging.prev, this.options);
+		const res = await zhihuRequest.get(this.paging.previous, this.options);
 		return new PaginatedResult(res.data, res.paging, this.options);
 	}
 }
 
 const httpMethods = {
-	get(url, options = {}) {
+	get(url, options) {
 		const zhihuRequest = getZhihuInstance();
 		return zhihuRequest.get(url, options).then(res =>
 			(res.paging && typeof res.paging === 'object')
@@ -40,22 +52,22 @@ const httpMethods = {
 		);
 	},
 
-	post(url, data = {}, options = {}) {
+	post(url, data, options) {
 		const zhihuRequest = getZhihuInstance();
 		return zhihuRequest.post(url, data, options).then(res => res);
 	},
 
-	patch(url, data = {}, options = {}) {
+	patch(url, data, options) {
 		const zhihuRequest = getZhihuInstance();
 		return zhihuRequest.patch(url, data, options).then(res => res);
 	},
 
-	put(url, data = {}, options = {}) {
+	put(url, data, options) {
 		const zhihuRequest = getZhihuInstance();
 		return zhihuRequest.put(url, data, options).then(res => res);
 	},
 
-	delete(url, options = {}) {
+	delete(url, options) {
 		const zhihuRequest = getZhihuInstance();
 		return zhihuRequest.delete(url, options).then(res => res);
 	},

@@ -30,8 +30,8 @@ const handleNavigate = (item) => {
         f7.panel.close('left');
     }
 
-    if (item.action) {
-        item.action();
+    if (item.external) {
+        $openLink(item.external);
     } else if (item.path) {
         f7.view.main.router.navigate(item.path);
     }
@@ -112,9 +112,10 @@ onMounted(() => {
     margin: 0 16px 16px 16px;
     width: 48px;
     height: 48px;
+    flex-shrink: 0;
     background: var(--f7-theme-color);
     color: white;
-    border-radius: 12px;
+    border-radius: 12px !important;
     display: flex;
     align-items: center;
     justify-content: center;

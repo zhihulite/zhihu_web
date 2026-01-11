@@ -8,17 +8,13 @@ const props = defineProps({
         type: Array, // Array { id, label, icon?: string | { ios, md } }
         required: true
     },
-    activeId: {
-        type: String,
-        default: undefined
-    },
     onChange: {
         type: Function,
         default: undefined
     },
-    defaultId: {
-        type: String,
-        default: undefined
+    scrollable: {
+        type: Boolean,
+        default: false
     },
     nested: {
         type: Boolean,
@@ -27,10 +23,14 @@ const props = defineProps({
     autoPageContent: {
         type: Boolean,
         default: true
+    },
+    fixed: {
+        type: Boolean,
+        default: true
     }
 });
 
-const emit = defineEmits(['update:activeId', 'tab:show']);
+const emit = defineEmits(['update:activeId', 'tab:show', 'tabviewinfinite']);
 
 const onTabShow = (tab) => {
     if (props.onChange) {
@@ -40,15 +40,19 @@ const onTabShow = (tab) => {
     emit('tab:show', tab.id);
 };
 
-const getTabId = (id) => `mtl-${id}`;
+const instanceId = Math.random().toString(36).slice(2, 10);
+const getTabId = (id) => `mtl-${instanceId}-${id}`
+
 </script>
 
+
 <template>
-    <div class="tab-layout">
+    <div class="tab-layout" :class="{ 'nested': nested }">
+
         <!-- top为0防止嵌套tabbar存在额外的top -->
-        <f7-toolbar tabbar top :class="['tab-bar', { 'tab-bar-nested': nested }]">
-            <f7-link v-for="tab in tabs" :key="tab.id" :tab-link="`#${getTabId(tab.id)}`"
-                :tab-link-active="activeId === tab.id" @click="onTabShow(tab)">
+        <f7-toolbar tabbar top :scrollable="scrollable" class="tab-bar" :class="{ 'tab-bar-static': !fixed }">
+            <f7-link v-for="(tab, index) in tabs" :key="tab.id" :tab-link="`#${getTabId(tab.id)}`"
+                @click="onTabShow(tab)" :tab-link-active="tab.active || (index === 0 && !tabs.some(t => t.active))">
                 <f7-icon v-if="tab.icon" :icon="typeof tab.icon === 'string' ? tab.icon : undefined"
                     :ios="typeof tab.icon === 'object' ? tab.icon.ios : undefined"
                     :md="typeof tab.icon === 'object' ? tab.icon.md : undefined"
@@ -59,8 +63,8 @@ const getTabId = (id) => `mtl-${id}`;
         </f7-toolbar>
 
         <f7-tabs swipeable :class="{ 'tabs-auto-page-content': !autoPageContent }">
-            <f7-tab v-for="tab in tabs" :key="tab.id" :id="getTabId(tab.id)" :tab-active="activeId === tab.id"
-                @tab:show="onTabShow(tab)">
+            <f7-tab v-for="(tab, index) in tabs" :key="tab.id" :id="getTabId(tab.id)" @tab:show="onTabShow(tab)"
+                :tab-active="tab.active || (index === 0 && !tabs.some(t => t.active))">
                 <slot :name="tab.id"></slot>
             </f7-tab>
         </f7-tabs>
@@ -77,14 +81,14 @@ const getTabId = (id) => `mtl-${id}`;
 }
 
 :deep(.tabs) {
-    height: 100%;
     width: 100%;
     flex: 1;
+    overflow: visible;
 }
 
 :deep(.tab) {
-    background-color: var(--f7-page-bg-color);
-    height: 100%;
+    width: 100%;
+    overflow: visible;
 }
 
 .tab-bar {

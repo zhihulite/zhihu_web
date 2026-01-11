@@ -4,6 +4,7 @@ import { ref, onMounted, nextTick, computed, onUnmounted } from 'vue';
 import TabLayout from './TabLayout.vue';
 import FeedCard from './FeedCard.vue';
 import $http from '../api/http.js';
+import { parseZhihuUrl, handleZhihuUrl } from '../utils/zhihu_url.js';
 
 
 const props = defineProps({
@@ -15,6 +16,15 @@ const activeTab = ref('general');
 const isSearching = ref(false);
 const inputRef = ref(null);
 
+// 搜索建议相关
+const searchSuggestions = ref([]);
+const showSuggestions = ref(false);
+const isLoadingSuggestions = ref(false);
+
+// 输入防抖计时器
+let debounceTimer = null;
+const DEBOUNCE_DELAY = 300; // 防抖延迟时间，单位ms
+
 
 const searchHistory = ref([]);
 const hotSearches = ref([]);
@@ -22,14 +32,14 @@ const isLoadingHotSearches = ref(false);
 
 // 按标签页独立管理搜索结果
 const tabSearchResults = ref({
-    general: { results: [], isEnd: false, offset: 0 },
-    realtime: { results: [], isEnd: false, offset: 0 },
-    people: { results: [], isEnd: false, offset: 0 },
-    column: { results: [], isEnd: false, offset: 0 },
-    publication: { results: [], isEnd: false, offset: 0 },
-    zvideo: { results: [], isEnd: false, offset: 0 },
-    pin: { results: [], isEnd: false, offset: 0 },
-    topic: { results: [], isEnd: false, offset: 0 }
+    general: { results: [], hasMore: true, lastResult: null },
+    realtime: { results: [], hasMore: true, lastResult: null },
+    people: { results: [], hasMore: true, lastResult: null },
+    column: { results: [], hasMore: true, lastResult: null },
+    publication: { results: [], hasMore: true, lastResult: null },
+    zvideo: { results: [], hasMore: true, lastResult: null },
+    pin: { results: [], hasMore: true, lastResult: null },
+    topic: { results: [], hasMore: true, lastResult: null }
 });
 
 const isLoadingResults = ref(false);
@@ -49,12 +59,12 @@ const SEARCH_TABS = [
 // 获取当前标签页是否还有更多结果
 const currentTabHasMore = computed(() => {
     const tab = tabSearchResults.value[activeTab.value];
-    return tab && !tab.isEnd;
+    return tab && tab.hasMore;
 });
 
 // 获取指定标签页的搜索结果
 const getTabResults = (tabId) => {
-    return tabSearchResults.value[tabId] || { results: [], isEnd: false };
+    return tabSearchResults.value[tabId] || { results: [], hasMore: true, lastResult: null };
 };
 
 // 组件挂载
@@ -127,15 +137,15 @@ const executeSearch = async (newSearch = false, tabId = activeTab.value) => {
 
     // 初始化标签页结果对象
     if (!tabSearchResults.value[tabId]) {
-        tabSearchResults.value[tabId] = { results: [], isEnd: false, offset: 0 };
+        tabSearchResults.value[tabId] = { results: [], hasMore: true, lastResult: null };
     }
 
     // 新搜索时重置状态
     if (newSearch) {
         tabSearchResults.value[tabId] = {
             results: [],
-            isEnd: false,
-            offset: 0
+            hasMore: true,
+            lastResult: null
         };
     }
 
@@ -149,48 +159,91 @@ const executeSearch = async (newSearch = false, tabId = activeTab.value) => {
     isLoadingResults.value = true;
 
     try {
-        // 构建搜索URL
-        let searchType = tabId;
-        let isRealTime = '0';
+        let res;
 
-        // 实时搜索特殊处理：搜索类型设置为general，同时实时搜索状态设置为1
-        if (tabId === 'realtime') {
-            searchType = 'general';
-            isRealTime = '1';
+        if (currentTab.lastResult) {
+            res = await currentTab.lastResult.next();
+        } else {
+            let searchType = tabId;
+            let isRealTime = '0';
+
+            if (tabId === 'realtime') {
+                searchType = 'general';
+                isRealTime = '1';
+            }
+
+            const searchUrl = `https://api.zhihu.com/search_v3?gk_version=gz-gaokao&q=${encodeURIComponent(query.value)}&t=${searchType}&search_source=History&is_real_time=${isRealTime}&correction=1&advert_count=&show_all_topics=0&pin_flow=false&restricted_scene=&restricted_field=&restricted_value=&limit=20&lc_idx=0`;
+            res = await $http.get(searchUrl);
         }
 
-        const offset = currentTab.offset || 0;
-        const searchUrl = `https://api.zhihu.com/search_v3?gk_version=gz-gaokao&q=${encodeURIComponent(query.value)}&t=${searchType}&search_source=History&is_real_time=${isRealTime}&correction=1&advert_count=&show_all_topics=0&pin_flow=false&restricted_scene=&restricted_field=&restricted_value=&offset=${offset}&limit=20&lc_idx=0`;
-        const response = await $http.get(searchUrl);
-
-        const apiData = response.data;
+        const apiData = res.data;
         const formattedResults = [];
 
-        if (apiData && Array.isArray(apiData)) {
-            apiData.forEach(item => {
-                if (item.type === 'search_result' && item.object) {
-                    formattedResults.push({
-                        id: item.object.id,
-                        type: item.object.type,
-                        title: item.highlight?.title || item.object.title || '',
-                        content: item.highlight?.description || item.object.excerpt || '',
-                        excerpt: item.object.excerpt || '',
-                        author: item.author ? {
-                            id: item.author.id,
-                            name: item.author.name,
-                            headline: item.author.headline,
-                            avatar_url: item.author.avatar_url
-                        } : null,
-                        metrics: {
-                            voteup_count: item.object.voteup_count || 0,
-                            comment_count: item.object.comment_count || 0,
-                            zfav_count: item.object.zfav_count || 0
-                        },
-                        url: item.object.url || ''
-                    });
-                }
+        apiData.forEach(item => {
+            const { object, type: itemType } = item;
+
+            if (itemType === 'knowledge_ad') {
+                const { url = '', body = {}, footer = null } = object;
+                const title = body.title || '';
+                const excerpt = body.description || '';
+
+                formattedResults.push({
+                    id: url,
+                    type: 'browser',
+                    title,
+                    content: excerpt,
+                    excerpt,
+                    authorName: '',
+                    noAuthorPrefix: true,
+                    avatarUrl: '',
+                    footer,
+                    metrics: { likes: 0, comments: 0 },
+                    url
+                });
+                return;
+            }
+
+            if (!object?.author && !object?.avatar_url) return;
+
+            const {
+                id: objectId,
+                type: objectType,
+                title = '',
+                excerpt = '',
+                url = '',
+                voteup_count: likes = 0,
+                comment_count: comments = 0,
+                author,
+                zvideo_id: zvideoId
+            } = object;
+
+            const authorName = author?.name || '';
+            const avatarUrl = author?.avatar_url || object.avatar_url || '';
+
+            const highlightTitle = item.highlight?.title || '';
+            const highlightDesc = item.highlight?.description || '';
+
+            let finalType = objectType;
+            let finalId = objectId;
+
+            if (objectType === 'zvideo' && zvideoId) {
+                finalId = zvideoId;
+            }
+
+            formattedResults.push({
+                id: finalId,
+                type: finalType,
+                title: highlightTitle || title,
+                content: highlightDesc || excerpt,
+                excerpt: highlightDesc || excerpt,
+                authorName,
+                noAuthorPrefix: authorName === '',
+                avatarUrl,
+                footer: null,
+                metrics: { likes, comments },
+                url
             });
-        }
+        });
 
         // 更新当前标签页的搜索结果
         if (newSearch) {
@@ -199,11 +252,9 @@ const executeSearch = async (newSearch = false, tabId = activeTab.value) => {
             currentTab.results = [...currentTab.results, ...formattedResults];
         }
 
-        // 更新是否还有更多结果
-        currentTab.isEnd = !response.paging.next;
-        if (!currentTab.isEnd) {
-            currentTab.offset = (currentTab.offset || 0) + 20;
-        }
+        // 保存lastResult和更新是否还有更多结果
+        currentTab.lastResult = res;
+        currentTab.hasMore = !!res.paging?.is_end;
     } catch (error) {
         console.error('搜索失败:', error);
     } finally {
@@ -213,17 +264,27 @@ const executeSearch = async (newSearch = false, tabId = activeTab.value) => {
 
 
 // 处理搜索
-const handleSearch = (text = query.value) => {
+const handleSearch = async (text = query.value) => {
     if (!text.trim()) return;
+
+    // 隐藏搜索建议
+    showSuggestions.value = false;
+    searchSuggestions.value = [];
+
+    // 检查输入是否是知乎URL
+    const urlResult = await parseZhihuUrl(text);
+    if (urlResult.type !== 'error' && urlResult.type !== 'browser') {
+        // 是知乎URL，清空输入框并处理
+        query.value = '';
+        await handleZhihuUrl(props.f7router, text);
+        return;
+    }
+
+    // 普通搜索
     query.value = text;
     isSearching.value = true;
     saveSearchHistory(text);
     executeSearch(true);
-};
-
-// 处理标签页重试
-const handleTabRetry = (tabId) => {
-    executeSearch(true, tabId);
 };
 
 // 处理清除历史
@@ -232,9 +293,53 @@ const handleClearHistory = () => {
     localStorage.removeItem('searchHistory');
 };
 
+// 处理单个历史记录删除
+const deleteHistoryItem = (index) => {
+    searchHistory.value.splice(index, 1);
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory.value));
+};
+
 // 处理返回
 const handleBack = () => {
     if (props.f7router) props.f7router.back();
+};
+
+// 获取搜索建议
+const fetchSearchSuggestions = async (value) => {
+    if (!value.trim()) {
+        searchSuggestions.value = [];
+        showSuggestions.value = false;
+        return;
+    }
+
+    isLoadingSuggestions.value = true;
+    try {
+        const suggestUrl = `https://www.zhihu.com/api/v4/search/suggest?q=${encodeURIComponent(value)}`;
+        const res = await $http.get(suggestUrl);
+        if (res && res.suggest && res.suggest) {
+            searchSuggestions.value = res.suggest;
+            showSuggestions.value = true;
+        } else {
+            searchSuggestions.value = [];
+        }
+    } catch (error) {
+        console.error('获取搜索建议失败:', error);
+        searchSuggestions.value = [];
+    } finally {
+        isLoadingSuggestions.value = false;
+    }
+};
+
+// 输入防抖处理函数 - 用于搜索建议
+const debouncedSuggestions = (value) => {
+    // 清除之前的计时器
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    // 设置新的计时器
+    debounceTimer = setTimeout(() => {
+        fetchSearchSuggestions(value);
+    }, DEBOUNCE_DELAY);
 };
 
 // 处理标签页切换
@@ -250,57 +355,16 @@ const handleTabChange = (tabId) => {
 
 // 处理输入框清除
 const handleInputClear = () => {
+    // 清除防抖计时器
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
     query.value = '';
     isSearching.value = false;
     inputRef.value?.focus();
-};
-
-// 处理结果项点击
-const handleItemClick = (item) => {
-    if (!props.f7router) return;
-
-    if (item.id && item.type) {
-        switch (item.type) {
-            case 'article':
-                props.f7router.navigate(`/article/${item.id}`);
-                break;
-            case 'question':
-                props.f7router.navigate(`/question/${item.id}`);
-                break;
-            case 'user':
-                props.f7router.navigate(`/user/${item.id}`);
-                break;
-            case 'topic':
-                props.f7router.navigate(`/topic/${item.id}`);
-                break;
-            default:
-                // 对于未知类型，尝试作为文章处理
-                props.f7router.navigate(`/article/${item.id}`);
-        }
-    }
-};
-
-// 处理下拉刷新
-const handleRefresh = async () => {
-    if (isSearching.value) {
-        await executeSearch(true);
-    } else {
-        await fetchHotSearches();
-    }
-};
-
-// 处理加载更多
-const handleLoadMore = async () => {
-    if (isSearching.value && currentTabHasMore.value) {
-        await executeSearch(false);
-    }
-};
-
-const handlePageRefresh = async (done) => {
-    if (!isSearching.value) {
-        await fetchHotSearches();
-    }
-    done();
+    // 清空搜索建议
+    searchSuggestions.value = [];
+    showSuggestions.value = false;
 };
 
 const handleTabRefresh = async (tabId, done) => {
@@ -310,7 +374,7 @@ const handleTabRefresh = async (tabId, done) => {
 
 const handleTabLoadMore = async (tabId) => {
     const tabData = tabSearchResults.value[tabId];
-    if (tabData && !tabData.isEnd) {
+    if (tabData && tabData.hasMore) {
         await executeSearch(false, tabId);
     }
 };
@@ -324,30 +388,40 @@ const handleTabLoadMore = async (tabId) => {
                     <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
                 </f7-link>
             </f7-nav-left>
-            <f7-nav-title style="width: 100%; margin-right: 16px;">
-                <f7-searchbar custom-search :value="query" @input="query = $event.target.value"
-                    @searchbar:search="handleSearch($event.target.value)" @searchbar:clear="handleInputClear"
-                    placeholder="搜索..." :disable-button="false" clear-button></f7-searchbar>
-            </f7-nav-title>
+            <f7-searchbar custom-search v-model:value="query" @searchbar:search="debouncedSuggestions($event.value)"
+                @searchbar:clear="handleInputClear" placeholder="搜索..." :disable-button="false"
+                clear-button></f7-searchbar>
             <f7-nav-right>
                 <f7-link @click="() => handleSearch()">搜索</f7-link>
             </f7-nav-right>
         </f7-navbar>
 
+        <!-- 搜索建议列表 -->
+        <div v-if="showSuggestions && searchSuggestions.length > 0" class="search-suggestions-container">
+            <div class="search-suggestions">
+                <f7-list>
+                    <f7-list-item v-for="(suggestion, index) in searchSuggestions" :key="index" link
+                        @click="() => handleSearch(suggestion.query)" :title="suggestion.query" class="suggestion-item">
+                    </f7-list-item>
+                </f7-list>
+            </div>
+        </div>
+
         <!-- 搜索结果视图 -->
-        <div v-show="isSearching" class="results-container">
-            <TabLayout :tabs="SEARCH_TABS" :activeId="activeTab" :onChange="handleTabChange" :nested="true"
+        <div v-if="isSearching && !showSuggestions" class="results-container">
+            <TabLayout :tabs="SEARCH_TABS" :onChange="handleTabChange" :scrollable="true" :fixed="false"
                 :auto-page-content="false">
                 <!-- 每个标签页的内容 -->
-                <template v-for="tab in SEARCH_TABS" :key="tab.id" v-slot:[tab.id]>
+                <template v-for="tab in SEARCH_TABS" :key="tab.id" #[tab.id]>
                     <f7-page-content ptr @ptr:refresh="(done) => handleTabRefresh(tab.id, done)" infinite
                         @infinite="handleTabLoadMore(tab.id)">
                         <!-- 有结果：显示列表 -->
                         <div v-if="getTabResults(tab.id).results.length > 0" class="results-list">
                             <FeedCard v-for="(item, idx) in getTabResults(tab.id).results" :key="item.id || idx"
-                                :item="item" @click="handleItemClick(item)" class="result-card margin-bottom" />
+                                :item="item" @click="$handleCardClick(f7router, item)"
+                                class="result-card margin-bottom" />
 
-                            <div v-if="getTabResults(tab.id).isEnd"
+                            <div v-if="getTabResults(tab.id).hasMore"
                                 class="end-message text-color-gray text-align-center padding">
                                 已加载全部搜索结果
                             </div>
@@ -366,7 +440,7 @@ const handleTabLoadMore = async (tabId) => {
         </div>
 
         <!-- 默认视图：历史和热搜 -->
-        <div v-show="!isSearching" class="default-container padding">
+        <div v-else-if="!isSearching && !showSuggestions" class="default-container padding">
             <!-- 搜索历史 -->
             <div v-if="searchHistory.length > 0" class="section margin-bottom">
                 <div class="section-header display-flex justify-content-space-between align-items-center margin-bottom">
@@ -376,8 +450,8 @@ const handleTabLoadMore = async (tabId) => {
                     </f7-link>
                 </div>
                 <div class="history-chips display-flex flex-wrap" style="gap: 8px;">
-                    <f7-chip v-for="(text, i) in searchHistory" :key="i" :text="text" @click="handleSearch(text)"
-                        class="history-chip" outline />
+                    <f7-chip v-for="(text, i) in searchHistory" :key="i" :text="text" @click="(e) => { if (!e.target.closest('.chip-delete')) handleSearch(text); }"
+                        class="history-chip" outline deleteable @delete="deleteHistoryItem(i)" />
                 </div>
             </div>
 

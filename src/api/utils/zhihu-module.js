@@ -117,13 +117,13 @@ class ZhihuRequest {
         console.log('Login data updated');
     }
 
-    async request(method, url, data = "", { headers = {}, encryptBody = true, isWWW = false } = {}) {
+    async request(method, url, data = "", { headers = {}, encryptBody = true, isWWW = false, encryptHead = false } = {}) {
         method = method.toUpperCase();
         const isGet = method === 'GET';
 
-        let baseDefaultHeaders = this.commonDefaultHeaders;
-        if (!isWWW) {
-            baseDefaultHeaders = this.defaultHeaders;
+        let baseDefaultHeaders = this.defaultHeaders;
+        if (isWWW) {
+            baseDefaultHeaders = this.commonDefaultHeaders;
         }
 
         const incomingCookie = headers.Cookie || headers.cookie;
@@ -156,10 +156,11 @@ class ZhihuRequest {
                 .join('; ');
         }
 
+
         const requestHeaders = {
             ...baseDefaultHeaders,
             ...headers,
-            ...(isGet && {
+            ...((isGet || encryptHead || !data) && {
                 "x-Zse-96": `1.0_${this.encryptData(url)}`,
             }),
         };
@@ -170,26 +171,37 @@ class ZhihuRequest {
         let body = null;
         if (!isGet && data) {
             body = encryptBody ? this.encryptData(data, false) : data;
-            requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+            if (!requestHeaders["Content-Type"]) requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
         }
 
         try {
-            console.log(`[ZhihuRequest] ${method} ${url}`);
-            const response = await unifiedFetch(url, {
-                method,
+            const fetchOptions = {
                 headers: requestHeaders,
-                body,
-            });
+            };
 
-            if (!response.ok) {
-                const error = new Error(`HTTP ${response.status}`);
-                error.response = response;
-                throw error;
+            let responseData;
+            switch (method) {
+                case 'GET':
+                    responseData = await unifiedFetch.get(url, fetchOptions);
+                    break;
+                case 'POST':
+                    responseData = await unifiedFetch.post(url, body, fetchOptions);
+                    break;
+                case 'PUT':
+                    responseData = await unifiedFetch.put(url, body, fetchOptions);
+                    break;
+                case 'PATCH':
+                    responseData = await unifiedFetch.patch(url, body, fetchOptions);
+                    break;
+                case 'DELETE':
+                    responseData = await unifiedFetch.delete(url, fetchOptions);
+                    break;
+                default:
+                    throw new Error(`Unsupported method: ${method}`);
             }
 
-            return response.json();
+            return responseData;
         } catch (error) {
-            console.error(`[ZhihuRequest] ${method} ${url} failed:`, error);
             throw error;
         }
     }
@@ -212,6 +224,10 @@ export async function initZhihu() {
         if (typeof data !== 'string') {
             throw new Error('data must be a string');
         }
+
+        // 暂时不想支持www
+        if (data.startsWith("https://www.zhihu.com") || data.startsWith("http://www.zhihu.com")) return data;
+        if (data.startsWith("https://lens.zhihu.com") || data.startsWith("http://lens.zhihu.com")) return data;
 
         if (isGetRequest) {
             const apiPrefix = 'https://api.zhihu.com';

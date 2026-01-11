@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-
+import { f7 } from 'framework7-vue';
 import $http from '../api/http.js';
 
 const props = defineProps({
@@ -12,45 +12,69 @@ const props = defineProps({
     resourceId: {
         type: [String, Number],
         required: true,
-    }
+    },
+    f7router: Object
 });
 
-const emit = defineEmits(['update:modelValue', 'reply', 'like']);
+const emit = defineEmits(['update:modelValue', 'reply']);
+
+const handleUserClick = (userId) => {
+    if (props.f7router) props.f7router.navigate(`/user/${userId}`);
+};
 
 const comments = ref([]);
 const totalComments = ref(0);
 const topResult = ref(null);
+const topHasMore = ref(true);
 const isLoading = ref(false);
 const error = ref(null);
+const sortOrder = ref('ts');
 
 const replyTo = ref(null);
+const replyCommentId = ref("");
 const replyContent = ref('');
 
 const expandedComment = ref(null);
 const repliesViewLoading = ref(false);
 
 const formatComment = (item) => {
+    const id = item.id;
+    const authorId = item.author?.id;
+    const authorName = item.author?.name || "匿名用户";
+    const authorAvatar = item.author?.avatar_url;
+    const ipLocation = item.address_text || null;
+    const content = convertLinksToOpenlink(item.content);
+    const likeCount = item.vote_count || 0;
+    const liked = item.liked;
+    const disliked = item.disliked;
+    const canDelete = item.can_delete;
+    const createdTime = new Date(item.created_time * 1000).toLocaleDateString();
     const repliesCount = item.replies_count || item.child_comment_count || 0;
+    const replyToAuthor = item.reply_to_author?.name || null;
+
     return {
-        id: item.id,
-        author_name: item.author?.member?.name || "匿名用户",
-        author_avatar: item.author?.member?.avatar_url,
-        ip_location: item.address_text || null,
-        content: item.content,
-        like_count: item.vote_count || 0,
-        created_time: new Date(item.created_time * 1000).toLocaleDateString(),
-        replies_count: repliesCount,
-        reply_to_author: item.reply_to_author?.member?.name || null,
-        child_result: null,
-        child_comments: [],
-        child_comments_loading: false,
+        id,
+        authorId,
+        authorName,
+        authorAvatar,
+        ipLocation,
+        content,
+        likeCount,
+        liked,
+        disliked,
+        canDelete,
+        createdTime,
+        repliesCount,
+        replyToAuthor,
+        childResult: null,
+        childComments: [],
+        childCommentsLoading: false,
+        hasMore: true,
     };
 };
 
 const getApiType = (type) => {
-    if (type === "p") return "articles";
-    if (type === "answer") return "answers";
-    return type;
+    return `${type}s`;
 };
 
 const loadTopComments = async (loadMore = false) => {
@@ -60,29 +84,33 @@ const loadTopComments = async (loadMore = false) => {
     error.value = null;
 
     try {
-        let result;
+        let res;
         if (loadMore && topResult.value) {
-            result = await topResult.value.next();
+            res = await topResult.value.next();
         } else {
-            const url = `https://api.zhihu.com/${getApiType(props.resourceType)}/${props.resourceId}/comments?limit=20&order=normal`;
-            result = await $http.get(url);
+            const url =
+                `https://api.zhihu.com/comment_v5/${getApiType(props.resourceType)}/${props.resourceId}/root_comment?limit=20&order_by=${sortOrder.value}`;
+            res = await $http.get(url);
         }
 
-        if (!result) {
+        if (!res) {
             isLoading.value = false;
             return;
         }
 
-        const formatted = result.data.map(formatComment);
+        const rawList = res?.data || [];
+
+        const formatted = rawList.map(formatComment);
 
         if (loadMore) {
             comments.value.push(...formatted);
         } else {
             comments.value = formatted;
-            totalComments.value = result.paging?.totals || result.data.length;
+            totalComments.value = res?.paging?.totals;
         }
 
-        topResult.value = result;
+        topHasMore.value = !res?.paging?.is_end;
+        topResult.value = res;
 
     } catch (err) {
         console.error('Failed to load comments:', err);
@@ -92,10 +120,49 @@ const loadTopComments = async (loadMore = false) => {
     }
 };
 
+const sendComment = async () => {
+    if (!replyContent.value.trim()) {
+        f7.dialog.alert("你还没输入喵");
+        return;
+    }
+
+    let mytext = replyContent.value;
+    // 替换回车换行符，防止 API 报错
+    mytext = mytext.replace(/\r/g, "\\u000D").replace(/\n/g, "\\u000A");
+
+    const postData = {
+        comment_id: "",
+        content: mytext,
+        extra_params: "",
+        has_img: false,
+        reply_comment_id: String(replyCommentId.value || ""),
+        score: 0,
+        selected_settings: [],
+        sticker_type: null,
+        unfriendly_check: "strict"
+    };
+
+    const type = getApiType(props.resourceType);
+    const url = `https://api.zhihu.com/comment_v5/${type}/${props.resourceId}/comment`;
+
+    try {
+        await $http.post(url, JSON.stringify(postData));
+        f7.toast.show({
+            text: "发送成功 如若想看到自己发言请刷新数据",
+            closeTimeout: 2000,
+            position: 'center'
+        });
+        clearReply();
+        loadTopComments();
+    } catch (err) {
+        console.error('Failed to send comment:', err);
+    }
+};
+
 const openRepliesView = async (comment) => {
     expandedComment.value = comment;
 
-    if (comment.replies_count > 0) {
+    if (comment.repliesCount > 0) {
         repliesViewLoading.value = true;
         await loadChildComments(comment);
         repliesViewLoading.value = false;
@@ -104,48 +171,45 @@ const openRepliesView = async (comment) => {
 
 const closeRepliesView = () => {
     if (expandedComment.value) {
-        expandedComment.value.child_comments = [];
+        expandedComment.value.childComments = [];
     }
     expandedComment.value = null;
 };
 
 const loadChildComments = async (parentComment, loadMore = false) => {
-    if (parentComment.child_comments_loading) return;
+    if (parentComment.childCommentsLoading) return;
 
-    parentComment.child_comments_loading = true;
+    parentComment.childCommentsLoading = true;
 
     try {
         let result;
-        if (loadMore && parentComment.child_result) {
-            result = await parentComment.child_result.next();
+        if (loadMore && parentComment.childResult) {
+            result = await parentComment.childResult.next();
         } else {
-            const url = `https://api.zhihu.com/comments/${parentComment.id}/replies?limit=20`;
+            const url = `https://api.zhihu.com/comment_v5/comment/${parentComment.id}/child_comment?limit=20&order_by=ts`;
             result = await $http.get(url);
-
-            if (result.data.length > 0 && result.data[0].id == parentComment.id) {
-                result.data = result.data.slice(1);
-            }
         }
 
         if (!result) {
-            parentComment.child_comments_loading = false;
+            parentComment.childCommentsLoading = false;
             return;
         }
 
         const formatted = result.data.map(formatComment);
 
         if (loadMore) {
-            parentComment.child_comments.push(...formatted);
+            parentComment.childComments.push(...formatted);
         } else {
-            parentComment.child_comments = formatted;
+            parentComment.childComments = formatted;
         }
 
-        parentComment.child_result = result;
+        parentComment.hasMore = !result.paging?.is_end;
+        parentComment.childResult = result;
 
     } catch (err) {
         console.error('Failed to load child comments:', err);
     } finally {
-        parentComment.child_comments_loading = false;
+        parentComment.childCommentsLoading = false;
     }
 };
 
@@ -154,11 +218,79 @@ const handleClose = () => {
 };
 
 const handleReply = (comment) => {
-    replyTo.value = comment.author_name;
+    const idStr = String(comment.id);
+    if (replyCommentId.value === idStr) {
+        clearReply();
+    } else {
+        replyTo.value = comment.authorName;
+        replyCommentId.value = idStr;
+        replyContent.value = '';
+    }
+};
+
+const deleteComment = async (commentId) => {
+    f7.dialog.confirm("确定要删除这条评论吗？", async () => {
+        try {
+            const url = `https://api.zhihu.com/comment_v5/comment/${commentId}`;
+            await $http.delete(url);
+            f7.toast.show({
+                text: "删除成功",
+                closeTimeout: 2000,
+                position: 'center'
+            });
+            // Refresh comments
+            if (expandedComment.value && (expandedComment.value.id === commentId || expandedComment.value.childComments.some(c =>
+                c.id === commentId))) {
+                if (expandedComment.value.id === commentId) {
+                    closeRepliesView();
+                    loadTopComments();
+                } else {
+                    loadChildComments(expandedComment.value);
+                }
+            } else {
+                loadTopComments();
+            }
+        } catch (err) {
+            console.error('Failed to delete comment:', err);
+        }
+    });
+};
+
+const toggleLike = async (comment) => {
+    const url = `https://api.zhihu.com/comment_v5/comment/${comment.id}/reaction/like`;
+    try {
+        if (!comment.liked) {
+            await $http.put(url, '');
+            comment.likeCount++;
+            comment.liked = true;
+        } else {
+            await $http.delete(url);
+            comment.likeCount--;
+            comment.liked = false;
+        }
+    } catch (err) {
+        console.error('Failed to toggle like:', err);
+    }
+};
+
+const toggleDislike = async (comment) => {
+    const url = `https://api.zhihu.com/comment_v5/comment/${comment.id}/reaction/dislike`;
+    try {
+        if (!comment.disliked) {
+            await $http.put(url, '');
+            comment.disliked = true;
+        } else {
+            await $http.delete(url);
+            comment.disliked = false;
+        }
+    } catch (err) {
+        console.error('Failed to toggle dislike:', err);
+    }
 };
 
 const clearReply = () => {
     replyTo.value = null;
+    replyCommentId.value = "";
     replyContent.value = '';
 };
 
@@ -170,6 +302,7 @@ watch(() => props.modelValue, (newVal) => {
         error.value = null;
         expandedComment.value = null;
         replyTo.value = null;
+        replyCommentId.value = "";
         replyContent.value = '';
 
         if (props.resourceType && props.resourceId) {
@@ -177,6 +310,41 @@ watch(() => props.modelValue, (newVal) => {
         }
     }
 });
+
+watch(sortOrder, () => {
+    if (props.modelValue) {
+        comments.value = [];
+        topResult.value = null;
+        loadTopComments();
+    }
+});
+
+
+const convertLinksToOpenlink = function (html) {
+    if (typeof html !== 'string') return html;
+
+    return html.replace(/<a\s+([^>]*?)>/gi, (match, attrs) => {
+        // 提取原始的 href 值
+        const hrefMatch = attrs.match(/href\s*=\s*(["'])(.*?)\1/i);
+        if (!hrefMatch) return match;
+
+        const originalUrl = hrefMatch[2];
+
+        // 移除 target 和 rel 属性
+        let newAttrs = attrs
+            .replace(/\s*target\s*=\s*["'][^"']*["']/gi, '')
+            .replace(/\s+rel\s*=\s*["'][^"']*["']/gi, '')
+            .replace(/\s+class\s*=\s*["'][^"']*["']/gi, '');
+
+        // 替换 href
+        newAttrs = newAttrs.replace(
+            /href\s*=\s*(["']).*?\1/i,
+            `href="javascript:$openLink('${originalUrl}')"`
+        );
+
+        return `<a ${newAttrs}>`;
+    });
+};
 </script>
 
 <template>
@@ -189,10 +357,16 @@ watch(() => props.modelValue, (newVal) => {
                     <f7-link icon-only @click="closeRepliesView">
                         <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
                     </f7-link>
-                    <span class="title">评论回复 ({{ expandedComment.replies_count }})</span>
+                    <span class="title">评论回复 ({{ expandedComment.repliesCount }})</span>
                 </div>
-                <div v-else class="header-left">
+                <div v-else class="header-left display-flex align-items-center">
                     <span class="title">{{ totalComments }} 条评论</span>
+                    <div class="sort-selector margin-left">
+                        <f7-link :class="{ 'active-sort': sortOrder === 'ts' }" @click="sortOrder = 'ts'">按时间</f7-link>
+                        <span class="divider">/</span>
+                        <f7-link :class="{ 'active-sort': sortOrder === 'score' }"
+                            @click="sortOrder = 'score'">按热度</f7-link>
+                    </div>
                 </div>
 
                 <f7-link icon-only @click="handleClose">
@@ -207,42 +381,67 @@ watch(() => props.modelValue, (newVal) => {
                     <div class="comment-item main-comment">
                         <!-- ... logic remains similar but using divs ... -->
                         <div class="display-flex padding">
-                            <img :src="expandedComment.author_avatar" class="avatar" />
+                            <f7-link @click="handleUserClick(expandedComment.authorId)" class="no-padding">
+                                <img :src="expandedComment.authorAvatar" class="avatar" />
+                            </f7-link>
                             <div class="margin-left flex-1">
-                                <div class="font-weight-bold">{{ expandedComment.author_name }}</div>
-                                <p>{{ expandedComment.content }}</p>
+                                <f7-link @click="handleUserClick(expandedComment.authorId)"
+                                    class="comment-author-link font-weight-bold">{{ expandedComment.authorName
+                                    }}</f7-link>
+                                <div class="comment-content" v-html="expandedComment.content"></div>
                             </div>
                         </div>
                     </div>
                     <div class="padding">全部回复</div>
                     <div class="list media-list no-hairlines-md">
                         <ul>
-                            <li v-for="reply in expandedComment.child_comments" :key="reply.id">
+                            <li v-for="reply in expandedComment.childComments" :key="reply.id">
                                 <div class="item-content">
                                     <div class="item-media">
-                                        <img :src="reply.author_avatar" class="avatar small" />
+                                        <f7-link @click="handleUserClick(reply.authorId)" class="no-padding">
+                                            <img :src="reply.authorAvatar" class="avatar small" />
+                                        </f7-link>
                                     </div>
                                     <div class="item-inner">
                                         <div class="item-title-row">
-                                            <div class="item-title">{{ reply.author_name }}</div>
-                                            <div class="item-after">{{ reply.created_time }}</div>
+                                            <f7-link @click="handleUserClick(reply.authorId)"
+                                                class="item-title comment-author-link">{{ reply.authorName }}</f7-link>
+                                            <div class="item-after">{{ reply.createdTime }}</div>
                                         </div>
-                                        <div class="item-text">{{ reply.content }}</div>
-                                        <div
-                                            class="item-footer display-flex justify-content-space-between margin-top-half">
-                                            <f7-link small @click="emit('like', reply.id)">
-                                                <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" /> {{
-                                                reply.like_count }}
+                                        <div class="item-text" v-html="reply.content"></div>
+                                        <div class="item-footer display-flex align-items-center margin-top-half">
+                                            <f7-link small @click="toggleLike(reply)" class="margin-right"
+                                                :class="{ 'text-color-primary': reply.liked }">
+                                                <f7-icon
+                                                    :ios="reply.liked ? 'f7:hand_thumbsup_fill' : 'f7:hand_thumbsup'"
+                                                    :md="reply.liked ? 'material:thumb_up' : 'material:thumb_up_off_alt'"
+                                                    size="14" /> {{ reply.likeCount }}
                                             </f7-link>
-                                            <f7-link small @click="handleReply(reply)">回复</f7-link>
+                                            <f7-link small @click="toggleDislike(reply)" class="margin-right"
+                                                :class="{ 'text-color-primary': reply.disliked }">
+                                                <f7-icon
+                                                    :ios="reply.disliked ? 'f7:hand_thumbsdown_fill' : 'f7:hand_thumbsdown'"
+                                                    :md="reply.disliked ? 'material:thumb_down' : 'material:thumb_down_off_alt'"
+                                                    size="14" />
+                                            </f7-link>
+                                            <f7-link small @click="handleReply(reply)" class="margin-right"
+                                                :class="{ 'text-color-primary': replyCommentId === String(reply.id) }">
+                                                回复
+                                            </f7-link>
+                                            <f7-link small v-if="reply.can_delete" color="red"
+                                                @click="deleteComment(reply.id)">删除</f7-link>
                                         </div>
                                     </div>
                                 </div>
                             </li>
                         </ul>
-                        <div class="padding text-align-center" v-if="expandedComment.child_result?.paging?.next">
+                        <div class="padding text-align-center" v-if="expandedComment.hasMore">
                             <f7-button small outline @click="loadChildComments(expandedComment, true)"
-                                :loading="expandedComment.child_comments_loading">加载更多回复</f7-button>
+                                :loading="expandedComment.childCommentsLoading">加载更多回复</f7-button>
+                        </div>
+                        <div v-else-if="expandedComment.childComments.length > 0"
+                            class="padding text-align-center text-color-gray font-size-12">
+                            已加载全部回复
                         </div>
                     </div>
                 </div>
@@ -260,23 +459,41 @@ watch(() => props.modelValue, (newVal) => {
                             <li v-for="comment in comments" :key="comment.id">
                                 <div class="item-content">
                                     <div class="item-media">
-                                        <img :src="comment.author_avatar" class="avatar" />
+                                        <f7-link @click="handleUserClick(comment.authorId)" class="no-padding">
+                                            <img :src="comment.authorAvatar" class="avatar" />
+                                        </f7-link>
                                     </div>
                                     <div class="item-inner">
                                         <div class="item-title-row">
-                                            <div class="item-title">{{ comment.author_name }}</div>
-                                            <div class="item-after">{{ comment.created_time }}</div>
+                                            <f7-link @click="handleUserClick(comment.authorId)"
+                                                class="item-title comment-author-link">{{ comment.authorName
+                                                }}</f7-link>
+                                            <div class="item-after">{{ comment.createdTime }}</div>
                                         </div>
-                                        <div class="item-text">{{ comment.content }}</div>
+                                        <div class="item-text" v-html="comment.content"></div>
                                         <div class="item-footer display-flex align-items-center margin-top-half">
-                                            <f7-link small @click="emit('like', comment.id)" class="margin-right">
-                                                <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" /> {{
-                                                comment.like_count }}
+                                            <f7-link small @click="toggleLike(comment)" class="margin-right"
+                                                :class="{ 'text-color-primary': comment.liked }">
+                                                <f7-icon
+                                                    :ios="comment.liked ? 'f7:hand_thumbsup_fill' : 'f7:hand_thumbsup'"
+                                                    :md="comment.liked ? 'material:thumb_up' : 'material:thumb_up_off_alt'"
+                                                    size="14" /> {{ comment.likeCount }}
                                             </f7-link>
-                                            <f7-link small @click="handleReply(comment)"
-                                                class="margin-right">回复</f7-link>
-                                            <f7-link small v-if="comment.replies_count > 0"
-                                                @click="openRepliesView(comment)">查看 {{ comment.replies_count }} 条回复
+                                            <f7-link small @click="toggleDislike(comment)" class="margin-right"
+                                                :class="{ 'text-color-primary': comment.disliked }">
+                                                <f7-icon
+                                                    :ios="comment.disliked ? 'f7:hand_thumbsdown_fill' : 'f7:hand_thumbsdown'"
+                                                    :md="comment.disliked ? 'material:thumb_down' : 'material:thumb_down_off_alt'"
+                                                    size="14" />
+                                            </f7-link>
+                                            <f7-link small @click="handleReply(comment)" class="margin-right"
+                                                :class="{ 'text-color-primary': replyCommentId === String(comment.id) }">
+                                                回复
+                                            </f7-link>
+                                            <f7-link small v-if="comment.canDelete" color="red" class="margin-right"
+                                                @click="deleteComment(comment.id)">删除</f7-link>
+                                            <f7-link small v-if="comment.repliesCount > 0"
+                                                @click="openRepliesView(comment)">查看 {{ comment.repliesCount }} 条回复
                                                 <f7-icon ios="f7:chevron_right" md="material:chevron_right" size="14" />
                                             </f7-link>
                                         </div>
@@ -284,8 +501,11 @@ watch(() => props.modelValue, (newVal) => {
                                 </div>
                             </li>
                         </ul>
-                        <div class="padding text-align-center" v-if="topResult?.paging?.next">
+                        <div class="padding text-align-center" v-if="topHasMore">
                             <f7-button outline @click="loadTopComments(true)" :loading="isLoading">加载更多评论</f7-button>
+                        </div>
+                        <div v-else class="padding text-align-center text-color-gray font-size-12">
+                            已加载全部评论
                         </div>
                     </div>
                 </div>
@@ -295,8 +515,9 @@ watch(() => props.modelValue, (newVal) => {
             <div class="footer padding display-flex align-items-center bg-color-white"
                 style="border-top: 1px solid rgba(0,0,0,0.1)">
                 <input type="text" v-model="replyContent" :placeholder="replyTo ? `回复 ${replyTo}...` : '说点什么...'"
+                    @keyup.enter="sendComment"
                     style="flex:1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; margin-right: 8px;">
-                <f7-link icon-only class="color-primary">
+                <f7-link icon-only class="color-primary" @click="sendComment">
                     <f7-icon ios="f7:paperplane_fill" md="material:send" />
                 </f7-link>
             </div>
@@ -305,6 +526,14 @@ watch(() => props.modelValue, (newVal) => {
 </template>
 
 <style scoped>
+.comments-sheet {
+    max-width: 600px;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto !important;
+    width: 100%;
+}
+
 .header {
     display: flex;
     justify-content: space-between;
@@ -333,8 +562,45 @@ watch(() => props.modelValue, (newVal) => {
     height: 30px;
 }
 
+.sort-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: normal;
+}
+
+.sort-selector .f7-link {
+    color: #999;
+}
+
+.sort-selector .f7-link.active-sort {
+    color: var(--f7-theme-color);
+    font-weight: bold;
+}
+
+.sort-selector .divider {
+    color: #eee;
+}
+
 .item-text {
     color: var(--f7-text-color);
     margin-top: 4px;
+}
+
+.item-text :deep(p),
+.comment-content :deep(p) {
+    margin: 0;
+    display: inline;
+}
+
+.comment-author-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.list .item-text {
+    max-height: none !important;
+    --webkit-line-clamp: none !important;
 }
 </style>

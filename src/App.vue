@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { f7App, f7Panel, f7View, f7Page, f7 } from 'framework7-vue';
+import { f7, f7ready } from 'framework7-vue';
 import AdaptiveNavigation from './components/AdaptiveNavigation.vue';
 import MoreMenuDialog from './components/MoreMenuDialog.vue';
 import { logout } from './api/auth.js';
@@ -17,8 +17,8 @@ const f7params = {
   name: 'Zhihu Lite',
   theme: 'auto',
   routes: routes, // Pass routes here
-  colors: {
-    primary: '#0066ff',
+  toast: {
+    closeTimeout: 3000,
   },
   serviceWorker: process.env.NODE_ENV === 'production' ? {
     path: '/service-worker.js',
@@ -34,10 +34,93 @@ const checkIsMobile = () => {
 onMounted(async () => {
   checkIsMobile();
   window.addEventListener('resize', checkIsMobile);
+
+  f7ready((f7) => {
+    loadThemeSettings(f7);
+    // 仅在默认默认开启时处理
+    const panel = f7.panel.get("left");
+    if (panel.opened) {
+      const PANEL_CLOSED_KEY = 'panel_was_closed';
+      let wasPanelClosed = localStorage.getItem(PANEL_CLOSED_KEY) === 'true';
+      if (wasPanelClosed) {
+        panel.toggle();
+      }
+
+      const handlePanelOpen = () => {
+        localStorage.removeItem(PANEL_CLOSED_KEY);
+      };
+
+      const handlePanelClose = () => {
+        localStorage.setItem(PANEL_CLOSED_KEY, 'true');
+      };
+
+      panel.on('open', handlePanelOpen);
+      panel.on('close', handlePanelClose);
+
+    }
+  });
 });
+
+
+let themeListener = null;
+
+const handleSystemThemeChange = (e) => {
+  try {
+    const stored = localStorage.getItem('theme_config');
+    if (stored) {
+      const config = JSON.parse(stored);
+      if (config.followSystem) {
+        if (f7) f7.setDarkMode(e.matches);
+      }
+    }
+  } catch (err) { console.error(err); }
+};
+
+const loadThemeSettings = (f7) => {
+  try {
+    const stored = localStorage.getItem('theme_config');
+    if (stored) {
+      const config = JSON.parse(stored);
+
+      if (config.followSystem) {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        f7.setDarkMode(mq.matches);
+
+        if (themeListener) mq.removeEventListener('change', themeListener);
+        themeListener = handleSystemThemeChange;
+        mq.addEventListener('change', themeListener);
+      } else {
+        if (config.darkMode !== undefined) {
+          f7.setDarkMode(config.darkMode);
+        }
+      }
+
+      if (config.fontSize) {
+        document.documentElement.style.setProperty('--f7-font-size', config.fontSize);
+      }
+      if (config.useCustomColor && config.customColor && typeof config.customColor === 'string' && config.customColor.trim() !== '') {
+        f7.setColorTheme(config.customColor);
+      } else if (config.color && f7.colors[config.color]) {
+        f7.setColorTheme(f7.colors[config.color]);
+      }
+      let scheme = 'default';
+      const mono = config.monochrome;
+      const vib = config.vibrant;
+      if (mono && vib) scheme = 'monochrome-vibrant';
+      else if (mono) scheme = 'monochrome';
+      else if (vib) scheme = 'vibrant';
+      f7.setMdColorScheme(scheme);
+    }
+  } catch (e) {
+    console.error('Failed to load theme settings in App', e);
+  }
+};
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkIsMobile);
+  if (themeListener) {
+    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', themeListener);
+  }
 });
 
 const handleLogout = () => {
@@ -52,18 +135,13 @@ const handleLogout = () => {
     });
   }
 };
-
-const handleCloseMoreDialog = () => {
-  isMoreDialogOpen.value = false;
-};
 </script>
 
 <template>
   <f7-app v-bind="f7params">
-    <!-- Main View -->
+
     <f7-view main class="safe-areas" url="/"></f7-view>
 
-    <!-- Left Panel / Drawer -->
     <f7-panel left cover :visible-breakpoint="768" resizable>
       <f7-view>
         <f7-page>
@@ -72,12 +150,6 @@ const handleCloseMoreDialog = () => {
       </f7-view>
     </f7-panel>
 
-    <MoreMenuDialog :isOpen="isMoreDialogOpen" :onClose="handleCloseMoreDialog" />
+    <MoreMenuDialog v-model="isMoreDialogOpen" :f7router="f7.views?.main?.router" />
   </f7-app>
 </template>
-
-<style>
-:root {
-  --f7-theme-color: #0b87ff;
-}
-</style>

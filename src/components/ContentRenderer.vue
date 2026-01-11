@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import ZVideoPlayer from './ZVideoPlayer.vue';
 import RenderStyledText from './RenderStyledText.vue';
 
 
@@ -86,7 +87,7 @@ const getCardInfo = (segment) => {
             </figure>
 
             <!-- Card -->
-            <a v-else-if="segment.type === 'card'" :href="getCardInfo(segment).url" target="_blank" rel="noopener"
+            <f7-card v-else-if="segment.type === 'card'" @click="$openLink(getCardInfo(segment).url)"
                 class="link-card group">
                 <div class="card-content">
                     <h4 class="card-title">{{ getCardInfo(segment).title }}</h4>
@@ -97,14 +98,11 @@ const getCardInfo = (segment) => {
                     </div>
                 </div>
                 <img v-if="getCardInfo(segment).cover" :src="getCardInfo(segment).cover" class="card-cover" />
-            </a>
+            </f7-card>
 
             <!-- Video -->
-            <div v-else-if="segment.type === 'video'" class="video-container">
-                <video controls class="video-player" :src="segment.video.url" :poster="segment.video.poster">
-                    Your browser does not support the video tag.
-                </video>
-            </div>
+            <ZVideoPlayer v-else-if="segment.type === 'video'" :video-id="segment.video.id"
+                :poster="segment.video.poster" />
 
             <!-- MyAppTip -->
             <div v-else-if="segment.type === 'myapptip'" class="app-tip">

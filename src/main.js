@@ -1,4 +1,4 @@
-if (!typeof GM_xmlhttpRequest === 'function') {
+if (typeof GM_xmlhttpRequest !== 'function') {
     alert('未检测到油猴（Tampermonkey环境！');
     window.location.href = 'https://greasyfork.org/scripts/508709';
 }
@@ -27,5 +27,51 @@ registerComponents(app);
 await zhihuModule.initZhihu()
 window.$http = $http;
 window.$zhihu = zhihuModule;
+
+const $openLink = function (url) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+}
+window.$openLink = $openLink
+app.config.globalProperties.$openLink = $openLink
+
+const $handleCardClick = (f7router, item) => {
+    const { type, id } = item;
+
+    switch (type) {
+        case "question":
+            f7router.navigate(`/question/${id}`);
+            break;
+        case "people":
+            f7router.navigate(`/user/${id}`);
+            break;
+        case "zvideo":
+            f7router.navigate(`/video/${id}`);
+            break;
+        case 'column':
+            f7router.navigate(`/column-items/${item.id}`);
+            break;
+        case "topic":
+            f7router.navigate(`/topic/${id}`);
+            break;
+        case "collection":
+            f7router.navigate(`/collection/${id}`);
+            break;
+        case 'roundtable':
+            $openLink(`https://www.zhihu.com/roundtable/${item.id}`);
+            break;
+        case 'special':
+            $openLink(`https://www.zhihu.com/special/${item.id}`);
+            break;
+        case 'browser':
+            $openLink(id);
+            break;
+        default:
+            f7router.navigate(`/article/${type}/${id}`);
+            break;
+    }
+};
+
+window.$handleCardClick = $handleCardClick
+app.config.globalProperties.$handleCardClick = $handleCardClick
 
 app.mount('#app');

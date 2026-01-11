@@ -2,7 +2,9 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import ContentRenderer from './ContentRenderer.vue';
 import CommentsSheet from './CommentsSheet.vue';
-import $http from '../api/http.js';
+import CollectionSheet from './CollectionSheet.vue';
+import { HistoryService } from '../services/historyService.js';
+import { f7 } from 'framework7-vue';
 
 const props = defineProps({
     f7route: Object,
@@ -12,6 +14,7 @@ const props = defineProps({
 const item = ref(null);
 const loading = ref(true);
 const showComments = ref(false);
+const showCollection = ref(false);
 const showToc = ref(false);
 const tocItems = ref([]);
 const isTocExpanded = ref(false);
@@ -45,7 +48,18 @@ const handleGalleryImageClick = (index) => {
     });
 };
 
-const type = props.f7route?.params?.type;
+let type = props.f7route?.params?.type;
+switch (type) {
+    case "pin_general":
+        type = "pin";
+        break;
+    case "p":
+        type = "article";
+        break;
+    default:
+        break;
+}
+
 const id = props.f7route?.params?.id;
 
 const visibleTocItems = computed(() => {
@@ -58,7 +72,7 @@ const visibleTocItems = computed(() => {
 const fetchData = async () => {
     loading.value = true;
     try {
-        const apiType = type === 'p' ? 'article' : type;
+        const apiType = type;
 
         const data = await $http.get(`https://api.zhihu.com/${apiType}s/v2/${id}`);
 
@@ -77,7 +91,7 @@ const fetchData = async () => {
         const mappedItem = {
             id: data.id,
             title: data.header?.text || '无标题',
-            author: data.author?.fullname || '匿名用户',
+            authorName: data.author?.fullname || '匿名用户',
             authorId: data.author?.id,
             avatarUrl: data.author.avatar?.avatar_image?.day || '',
             imageUrl: data.image_url || data.title_image || '',
@@ -85,12 +99,22 @@ const fetchData = async () => {
             content: data.content || '',
             metrics: {
                 votes: data.reaction.statistics.up_vote_count || 0,
+                likes: data.reaction.statistics.like_count || 0,
+                favlists: data.reaction.statistics.favorites || 0,
                 comments: data.reaction.statistics.comment_count || 0
-            }
+            },
+            isUpvoted: data.reaction?.relation?.vote === "UP" ? true : false,
+            isLiked: data.reaction?.relation?.liked || false,
+            isFavorited: data.reaction?.relation?.faved || false
         };
 
-        if (type === 'p') {
+
+        if (data.settings?.table_of_contents?.enabled) {
             tocItems.value = extractTOC(segs);
+        }
+
+        if (type === 'answer') {
+            mappedItem.questionID = data.question.id;
         }
 
         if (data.image_list?.images) {
@@ -99,8 +123,17 @@ const fetchData = async () => {
 
         item.value = mappedItem;
 
+        HistoryService.addRecord({
+            id: mappedItem.id,
+            type: type,
+            title: mappedItem.title,
+            preview: mappedItem.content?.substring(0, 100).replace(/<[^>]+>/g, '')
+        });
+
     } catch (e) {
-        console.error('Failed to fetch article', e);
+        f7.dialog.alert(`文章加载失败，请稍后重试 ${e}`, () => {
+            props.f7router.back();
+        });
     } finally {
         loading.value = false;
     }
@@ -132,17 +165,112 @@ const scrollToHeading = (elementId) => {
     });
 };
 
+const toggleVote = async () => {
+    if (!item.value) return;
+    const isUpvoted = item.value.isUpvoted === true;
+    const apiType = type;
+    const url = `https://api.zhihu.com/reaction/${apiType}s/${id}/vote/up`;
+
+    try {
+        if (!isUpvoted) {
+            await $http.post(url);
+            item.value.isUpvoted = true;
+            item.value.metrics.votes++;
+        } else {
+            await $http.delete(url);
+            item.value.isUpvoted = false;
+            item.value.metrics.votes--;
+        }
+    } catch (e) {
+        console.error('Failed to toggle vote', e);
+    }
+};
+
+const toggleLike = async () => {
+    if (!item.value) return;
+    const isLiked = item.value.isLiked;
+    const apiType = type;
+    const url = `https://api.zhihu.com/reaction/${apiType}s/${id}/like`;
+
+    try {
+        if (!isLiked) {
+            await $http.post(url);
+            item.value.isLiked = true;
+            item.value.metrics.likes++;
+        } else {
+            await $http.delete(url);
+            item.value.isLiked = false;
+            item.value.metrics.likes--;
+        }
+    } catch (e) {
+        console.error('Failed to toggle thank', e);
+    }
+};
+
+const toggleFavorite = async () => {
+    if (!item.value) return;
+    const isFavorited = item.value.isFavorited;
+    const apiType = type;
+    const url = `https://api.zhihu.com/collections/contents/${apiType}/${id}`;
+
+    try {
+        if (!isFavorited) {
+            await $http.post(url, null, { encryptHead: true });
+            item.value.isFavorited = true;
+            item.value.metrics.favlists++;
+
+            f7.toast.show({
+                text: '已收藏至默认收藏夹',
+                closeTimeout: 3000,
+                closeButton: true,
+                closeButtonText: '更换',
+                on: {
+                    closeButtonClick() {
+                        showCollection.value = true;
+                    },
+                },
+            });
+        } else {
+            await $http.delete(`${url}?failed_multi=1`, { encryptHead: true });
+            item.value.isFavorited = false;
+            item.value.metrics.favlists--;
+            f7.toast.show({ text: '已取消收藏', closeTimeout: 2000 });
+        }
+    } catch (e) {
+        console.error('Failed to toggle favorite', e);
+    }
+};
+
+const navClick = () => {
+    if (type == "answer") props.f7router.navigate(`/question/${item.value.questionID}`);
+}
+
+const navigateToUser = (userId) => {
+    props.f7router.navigate(`/user/${userId}`);
+};
+
 onMounted(() => {
     if (id) {
         fetchData();
     }
 });
 
+const onCollectionSuccess = (isFavorited) => {
+    const wasFavorited = item.value.isFavorited;
+    item.value.isFavorited = isFavorited;
+
+    if (isFavorited && !wasFavorited) {
+        item.value.metrics.favlists++;
+    } else if (!isFavorited && wasFavorited) {
+        item.value.metrics.favlists--;
+    }
+};
+
 </script>
 
 <template>
     <f7-page class="article-detail">
-        <f7-navbar>
+        <f7-navbar @click="navClick">
             <f7-nav-left>
                 <f7-link icon-only @click="f7router.back()">
                     <f7-icon ios="f7:arrow_left" md="material:arrow_back" />
@@ -169,11 +297,11 @@ onMounted(() => {
             </div>
 
             <div class="content-wrapper">
-                <f7-card class="author-card" @click="f7router.navigate(`/user/${item.authorId}`)">
+                <f7-card class="author-card" @click="navigateToUser(item.authorId)">
                     <f7-card-content class="display-flex align-items-center padding">
                         <img :src="item.avatarUrl" class="card-avatar" />
                         <div class="card-info margin-left">
-                            <div class="card-name">{{ item.author }}</div>
+                            <div class="card-name">{{ item.authorName }}</div>
                             <div class="card-desc">知乎用户</div>
                         </div>
                     </f7-card-content>
@@ -191,7 +319,7 @@ onMounted(() => {
                             <span>{{ isTocExpanded ? '收起' : '展开更多' }}</span>
                             <f7-icon :ios="isTocExpanded ? 'f7:chevron_up' : 'f7:chevron_down'"
                                 :md="isTocExpanded ? 'material:expand_less' : 'material:expand_more'"
-                                class="toggle-icon" />
+                                class="toc-toggle-icon" />
                         </div>
                     </f7-card-content>
                 </f7-card>
@@ -209,34 +337,51 @@ onMounted(() => {
             </div>
         </f7-page-content>
 
-        <!-- Bottom Float Bar logic inside page to float -->
         <div v-if="item" class="bottom-float-container">
             <div class="float-bar glass">
-                <div class="action-group">
+                <div class="action-group" @click="toggleVote" :class="{ 'active-primary': item.isUpvoted === true }">
                     <f7-link icon-only>
-                        <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="20" />
+                        <f7-icon :ios="item.isUpvoted === true ? 'f7:hand_thumbsup_fill' : 'f7:hand_thumbsup'"
+                            :md="item.isUpvoted === true ? 'material:thumb_up' : 'material:thumb_up_off_alt'"
+                            size="18" />
                     </f7-link>
                     <span class="action-count">{{ formatCount(item.metrics.votes) }}</span>
                 </div>
 
                 <div class="vertical-divider"></div>
 
-                <div class="action-group" @click="showComments = true">
+                <div class="action-group" @click="toggleLike" :class="{ 'active-primary': item.isLiked }">
                     <f7-link icon-only>
-                        <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="20" />
+                        <f7-icon :ios="item.isLiked ? 'f7:heart_fill' : 'f7:heart'"
+                            :md="item.isLiked ? 'material:favorite' : 'material:favorite_border'" size="18" />
                     </f7-link>
-                    <span class="action-count">{{ formatCount(item.metrics.comments) }}</span>
+                    <span class="action-count">{{ formatCount(item.metrics.likes) }}</span>
                 </div>
 
                 <div class="vertical-divider"></div>
 
-                <f7-link icon-only>
-                    <f7-icon ios="f7:bookmark" md="material:bookmark" size="20" />
-                </f7-link>
+                <div class="action-group" @click="toggleFavorite" :class="{ 'active-primary': item.isFavorited }">
+                    <f7-link icon-only>
+                        <f7-icon :ios="item.isFavorited ? 'f7:bookmark_fill' : 'f7:bookmark'"
+                            :md="item.isFavorited ? 'material:bookmark' : 'material:bookmark_border'" size="18" />
+                    </f7-link>
+                    <span class="action-count">{{ formatCount(item.metrics.favlists) }}</span>
+                </div>
+
+                <div class="vertical-divider"></div>
+
+                <div class="action-group" @click="showComments = true">
+                    <f7-link icon-only>
+                        <f7-icon ios="f7:bubble_left" md="material:chat_bubble_outline" size="18" />
+                    </f7-link>
+                    <span class="action-count">{{ formatCount(item.metrics.comments) }}</span>
+                </div>
             </div>
         </div>
 
-        <CommentsSheet v-model="showComments" :resourceId="id" :resourceType="type" />
+        <CommentsSheet v-model="showComments" :resourceId="id" :resourceType="type" :f7router="f7router" />
+        <CollectionSheet v-model="showCollection" :contentId="id" :contentType="type"
+            @success="onCollectionSuccess" />
 
         <f7-popover class="toc-popover" :opened="showToc" @popover:closed="showToc = false">
             <div class="display-flex justify-content-between align-items-center padding">
@@ -462,18 +607,18 @@ onMounted(() => {
     min-width: 20px;
 }
 
+.action-group.active-primary {
+    color: var(--f7-theme-color);
+}
+
+.action-group.active-primary :deep(.f7-icon) {
+    color: var(--f7-theme-color);
+}
+
 .vertical-divider {
     width: 1px;
     height: 20px;
     margin: 0 4px;
-}
-
-.toc-card {
-    padding: 16px;
-    border-radius: 12px;
-    margin: 16px 0 24px 0;
-    max-width: none;
-    min-width: 100%;
 }
 
 .toc-header {
@@ -503,7 +648,7 @@ onMounted(() => {
     transition: background-color 0.2s;
 }
 
-.toggle-icon {
+.toc-toggle-icon {
     font-size: 1.2rem;
     margin-left: 4px;
 }

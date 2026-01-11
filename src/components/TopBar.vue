@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { f7 } from 'framework7-vue'
 import LoginDialog from './LoginDialog.vue'
 import { useUser } from '@/composables/userManager'
 
@@ -16,6 +17,8 @@ const navigateToSearch = () => {
 const handleAvatarClick = () => {
     if (!isLoggedIn.value) {
         showLogin.value = true
+    } else if (props.f7router && currentUser.value?.id) {
+        props.f7router.navigate(`/user/${currentUser.value.id}`)
     }
 }
 
@@ -55,7 +58,7 @@ const onLoginSuccess = () => {
 <template>
     <f7-navbar>
         <f7-nav-left>
-            <f7-link icon-only panel-open="left">
+            <f7-link icon-only panel-toggle="left">
                 <f7-icon ios="f7:menu" md="material:menu" />
             </f7-link>
         </f7-nav-left>
@@ -67,14 +70,6 @@ const onLoginSuccess = () => {
         <f7-nav-right>
             <f7-link @click="navigateToSearch" class="search-link" icon-only>
                 <f7-icon ios="f7:search" md="material:search" />
-            </f7-link>
-
-            <f7-link icon-only class="desktop-only">
-                <f7-icon ios="f7:bell" md="material:notifications" />
-            </f7-link>
-
-            <f7-link icon-only class="tablet-only">
-                <f7-icon ios="f7:chat_bubble" md="material:chat_bubble" />
             </f7-link>
 
             <f7-link @click="handleAvatarClick" class="avatar-link">
