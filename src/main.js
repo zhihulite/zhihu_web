@@ -1,6 +1,6 @@
 if (typeof GM_xmlhttpRequest !== 'function') {
-    alert('未检测到油猴（Tampermonkey环境！）');
-    window.location.href = 'https://greasyfork.org/scripts/508709';
+    alert('未检测到GM_xmlhttpRequest！请检查是否已安装插件并安装脚本');
+    window.location.replace('https://scriptcat.org/script-show-page/5149');
 }
 
 import { createApp } from 'vue';

@@ -2,5 +2,5 @@
 
 目前进度
 
-- [ ] 路由缓存 解决重复加载 解决用户页点击更多可能会请求 api.zhihu.com/type/v2 问题
+- [ ] 路由缓存 解决预加载(preloadPreviousPage 用户页点击更多可能会请求 api.zhihu.com/type/v2 问题)
       
