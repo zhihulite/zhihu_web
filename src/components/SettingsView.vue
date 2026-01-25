@@ -356,6 +356,24 @@ const loadThemeSettings = () => {
     }
 };
 
+const showMsidTutorial = ref(false);
+
+const openMsidTutorial = () => {
+    showMsidTutorial.value = true;
+};
+
+const setMsid = () => {
+    f7.dialog.prompt('请输入数盟ID (留空则使用默认)', '设置数盟ID', (value) => {
+        if (!value) {
+            localStorage.removeItem('zhihu_msid');
+            f7.toast.show({ text: '已恢复默认ID', closeTimeout: 2000 });
+        } else {
+            localStorage.setItem('zhihu_msid', value);
+            f7.toast.show({ text: '设置成功', closeTimeout: 2000 });
+        }
+    }, () => { }, localStorage.getItem('zhihu_msid') || '');
+};
+
 loadThemeSettings();
 </script>
 
@@ -446,9 +464,16 @@ loadThemeSettings();
             </f7-list-item>
         </f7-list>
 
+        <f7-block-title>高级设置</f7-block-title>
+        <f7-list strong inset>
+            <f7-list-item title="数盟ID获取教程" link="#" @click="openMsidTutorial"></f7-list-item>
+            <f7-list-item title="设置数盟ID" link="#" @click="setMsid"></f7-list-item>
+        </f7-list>
+
         <f7-block-title>关于</f7-block-title>
         <f7-list strong inset>
-            <f7-list-item title="关于" after="版本 1.0.0 (Beta)"></f7-list-item>
+            <f7-list-item @click="$openLink('https://zhihulite.github.io/')" title="关于"
+                after="版本 1.0.0 (Beta)"></f7-list-item>
         </f7-list>
 
         <f7-popup :opened="showCityDialog" class="city-popup" @popup:closed="handleClose" swipe-to-close>
@@ -503,6 +528,30 @@ loadThemeSettings();
                         </template>
                     </f7-list-item>
                 </f7-list>
+            </f7-page>
+        </f7-popup>
+
+        <f7-popup :opened="showMsidTutorial" @popup:closed="showMsidTutorial = false" swipe-to-close>
+            <f7-page>
+                <f7-navbar title="数盟ID获取教程">
+                    <f7-nav-right>
+                        <f7-link @click="showMsidTutorial = false">关闭</f7-link>
+                    </f7-nav-right>
+                </f7-navbar>
+                <f7-block>
+                    <p>下载元萝卜 <f7-link external
+                            href="https://github.com/Katana-Official/SPatch-Update/releases">https://github.com/Katana-Official/SPatch-Update/releases</f7-link>
+                    </p>
+                    <p>安装mt管理器和知乎 打开分身的知乎同意协议进入主页后 退出打开mt管理器 进入侧滑 点击终端执行器 执行以下命令</p>
+                    <f7-block strong inset class="code-block" style="word-break: break-all; user-select: text;">
+                        grep 'name="device_id"'
+                        /data/user/0/top.bienvenido.saas.i18n/app_data_anon/com.zhihu.android/0/shared_prefs/com.zhihu.android_dna.xml
+                        | sed 's/.*&lt;string name="device_id"&gt;\([^&lt;]*\)&lt;\/string&gt;.*/\1/'
+                    </f7-block>
+                    <p>如果是root 就不用这一步 直接打开mt管理器 输入su后将上述指令的 top.bienvenido.saas.i18n/app_data_anon/ 替换为空 执行即可得到参数</p>
+                    <p>将输出文本复制粘贴到这里即可</p>
+                    <p>或者去github.com或其他途径搜索 x-ms-id 将他的输出参数复制即可 留空则为使用默认ms-id</p>
+                </f7-block>
             </f7-page>
         </f7-popup>
     </f7-page>

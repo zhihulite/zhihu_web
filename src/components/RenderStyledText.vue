@@ -13,38 +13,46 @@ const props = defineProps({
 });
 
 const parts = computed(() => {
-    if (!props.marks || props.marks.length === 0) {
-        return [{ type: 'text', content: props.text }];
+    const text = props.text;
+    const marks = props.marks || [];
+
+    if (marks.length === 0) {
+        return [{ type: 'text', content: text }];
     }
 
-    const sortedMarks = [...props.marks].sort((a, b) => a.start_index - b.start_index);
-    const result = [];
-    let lastIndex = 0;
-
-    sortedMarks.forEach(mark => {
-        if (mark.start_index > lastIndex) {
-            result.push({
-                type: 'text',
-                content: props.text.substring(lastIndex, mark.start_index)
-            });
-        }
-
-        const segmentContent = props.text.substring(mark.start_index, mark.end_index);
-        result.push({
-            type: 'mark',
-            markType: mark.type, // 'bold', 'italic', 'link'
-            content: segmentContent,
-            link: mark.link // { href: ... }
-        });
-
-        lastIndex = mark.end_index;
+    // 获取所有边界点并去重排序
+    const points = new Set([0, text.length]);
+    marks.forEach(m => {
+        if (m.start_index >= 0 && m.start_index <= text.length) points.add(m.start_index);
+        if (m.end_index >= 0 && m.end_index <= text.length) points.add(m.end_index);
     });
+    const sortedPoints = Array.from(points).sort((a, b) => a - b);
 
-    if (lastIndex < props.text.length) {
-        result.push({
-            type: 'text',
-            content: props.text.substring(lastIndex)
-        });
+    const specialTypes = ['bold', 'italic', 'code', 'link', 'entity_word'];
+
+    const result = [];
+    for (let i = 0; i < sortedPoints.length - 1; i++) {
+        const start = sortedPoints[i];
+        const end = sortedPoints[i + 1];
+        if (start === end) continue;
+
+        const content = text.substring(start, end);
+        const activeMarks = marks.filter(m => m.start_index <= start && m.end_index >= end);
+
+        if (activeMarks.length === 0) {
+            result.push({ type: 'text', content });
+        } else {
+            const activeTypes = activeMarks.map(m => m.type);
+            const markInfo = {
+                type: 'mark',
+                content,
+                activeTypes,
+                url: activeMarks.find(m => m.type === 'link')?.link?.href ||
+                    activeMarks.find(m => m.type === 'entity_word')?.entity_word?.url,
+                isHighlight: activeTypes.some(t => !specialTypes.includes(t))
+            };
+            result.push(markInfo);
+        }
     }
 
     return result;
@@ -55,13 +63,17 @@ const parts = computed(() => {
     <span>
         <template v-for="(part, index) in parts" :key="index">
             <span v-if="part.type === 'text'">{{ part.content }}</span>
-            <a v-else-if="part.markType === 'link' && part.link" :href="`javascript:$openLink('${part.link.href}')`"
-                class="styled-link" @click.stop>
-                {{ part.content }}
-            </a>
-            <strong v-else-if="part.markType === 'bold'" class="styled-bold">{{ part.content }}</strong>
-            <em v-else-if="part.markType === 'italic'" class="styled-italic">{{ part.content }}</em>
-            <span v-else class="styled-highlight">{{ part.content }}</span>
+            <a v-else-if="part.url" :href="`javascript:$openLink('${part.url}')`" class="styled-link" :class="{
+                'styled-bold': part.activeTypes.includes('bold'),
+                'styled-italic': part.activeTypes.includes('italic'),
+                'styled-code': part.activeTypes.includes('code')
+            }" @click.stop>{{ part.content }}</a>
+            <span v-else :class="{
+                'styled-bold': part.activeTypes.includes('bold'),
+                'styled-italic': part.activeTypes.includes('italic'),
+                'styled-code': part.activeTypes.includes('code'),
+                'styled-highlight': part.isHighlight
+            }">{{ part.content }}</span>
         </template>
     </span>
 </template>
@@ -83,9 +95,21 @@ const parts = computed(() => {
 }
 
 .styled-highlight {
-    background-color: #fef3c7;
-    /* yellow-100 */
-    color: #111827;
-    /* gray-900 */
+    background-color: rgba(var(--f7-theme-color-rgb, 33, 150, 243), 0.12);
+    color: var(--f7-theme-color, #2196f3);
+    padding: 0.1em 0.3em;
+    margin: 0 0.1em;
+    border-radius: 6px;
+    font-weight: 500;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.styled-code {
+    font-family: monospace;
+    background-color: rgba(125, 125, 125, 0.1);
+    padding: 0 4px;
+    border-radius: 4px;
+    font-size: 0.9em;
 }
 </style>

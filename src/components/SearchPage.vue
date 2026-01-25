@@ -8,8 +8,13 @@ import { parseZhihuUrl, handleZhihuUrl } from '../utils/zhihu_url.js';
 
 
 const props = defineProps({
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+import { useHistory } from '../composables/useHistory.js';
+const { register, restoreState } = useHistory(props, 'search_page');
+const hasHistory = !!restoreState();
 
 const query = ref('');
 const activeTab = ref('general');
@@ -42,6 +47,28 @@ const tabSearchResults = ref({
     topic: { results: [], hasMore: true, lastResult: null }
 });
 
+const pageRef = ref(null);
+const tabRefs = ref({});
+
+register({
+    state: {
+        query,
+        activeTab,
+        isSearching,
+        tabSearchResults
+    },
+    scroll: () => {
+        const map = {};
+        Object.entries(tabRefs.value).forEach(([id, el]) => {
+            if (el) {
+                // f7-page-content is the scrollable element itself
+                map[id] = el.$el;
+            }
+        });
+        return map;
+    }
+});
+
 const isLoadingResults = ref(false);
 
 // 搜索标签定义
@@ -69,9 +96,11 @@ const getTabResults = (tabId) => {
 
 // 组件挂载
 onMounted(() => {
-    nextTick(() => inputRef.value?.focus());
-    fetchHotSearches();
-    loadSearchHistory();
+    if (!hasHistory) {
+        nextTick(() => inputRef.value?.focus());
+        fetchHotSearches();
+        loadSearchHistory();
+    }
 });
 
 // 加载搜索历史
@@ -413,7 +442,7 @@ const handleTabLoadMore = async (tabId) => {
                 :auto-page-content="false">
                 <!-- 每个标签页的内容 -->
                 <template v-for="tab in SEARCH_TABS" :key="tab.id" #[tab.id]>
-                    <f7-page-content ptr @ptr:refresh="(done) => handleTabRefresh(tab.id, done)" infinite
+                    <f7-page-content :ref="el => tabRefs[tab.id] = el" ptr @ptr:refresh="(done) => handleTabRefresh(tab.id, done)" infinite
                         @infinite="handleTabLoadMore(tab.id)">
                         <!-- 有结果：显示列表 -->
                         <div v-if="getTabResults(tab.id).results.length > 0" class="results-list">

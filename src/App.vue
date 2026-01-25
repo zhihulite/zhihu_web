@@ -7,6 +7,7 @@ import { logout } from './api/auth.js';
 import { useUser } from '@/composables/userManager';
 import routes from './f7-routes.js';
 import store from './store.js';
+import { checkTipVersion } from './utils/tip_manager.js';
 
 const { resetUser, refreshUser } = useUser();
 
@@ -14,6 +15,9 @@ const isMoreDialogOpen = ref(false);
 const isMobile = ref(false);
 const isNativeApp = ref(false);
 
+const basePath = window.location.pathname.endsWith('/')
+  ? window.location.pathname
+  : window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
 // Framework7 Parameters
 const f7params = {
   name: 'Zhihu Lite',
@@ -27,13 +31,26 @@ const f7params = {
     buttonCancel: "取消"
   },
   serviceWorker: process.env.NODE_ENV === 'production' ? {
-    path: '/service-worker.js',
+    path: basePath + 'service_workers.js',
   } : {},
 };
 
 onMounted(async () => {
   f7ready((f7) => {
     loadThemeSettings(f7);
+
+    // 首次打开提示
+    checkTipVersion('welcome_tip', 1769350802686, () => {
+      f7.dialog.alert('温馨提示：文章页部分内容可能与原网页有所不同。如果遇到排版问题，您可以点击右上角菜单选择“打开原始网页”或“复制原始链接”。', '提示');
+    });
+
+    // 开源提示
+    checkTipVersion('opensource_tip', 1769350802686, () => {
+      f7.dialog.confirm('该项目已开源，是否跳转到 GitHub 查看源码？', '开源提示', () => {
+        window.open('https://github.com/zhihulite/zhihu_web', '_blank');
+      });
+    });
+
     // 仅在默认默认开启时处理
     const panel = f7.panel.get("left");
     if (panel.opened) {
@@ -135,6 +152,7 @@ const handleLogout = () => {
   }
 };
 const browserHistoryRoot = ref(isNativeApp.value ? undefined : window.location.pathname);
+
 </script>
 
 <template>

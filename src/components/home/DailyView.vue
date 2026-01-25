@@ -7,6 +7,7 @@ const dailyList = ref([]);
 const loading = ref(false);
 const hasMore = ref(true);
 const currentDate = ref(null); // Format: yyyyMMdd
+const rawUnifiedFetch = window.rawUnifiedFetch
 
 const fetchDailyData = async (isRefresh = false) => {
     if (loading.value) return;
@@ -19,8 +20,9 @@ const fetchDailyData = async (isRefresh = false) => {
             url = `https://news-at.zhihu.com/api/4/stories/before/${currentDate.value}`;
         }
 
-        // 调用全局的 unifiedFetch 实例
-        const res = await window.unifiedFetch.get(url);
+        const res = await rawUnifiedFetch.get(url, {
+            headers: { 'Cookie': ' ' }
+        });
         const mappedStories = (res.stories || []).map(s => ({
             id: s.id,
             title: s.title,

@@ -137,6 +137,11 @@ const fetchData = async () => {
             tocItems.value = extractTOC(segs);
         }
 
+        // 处理段落中的索引
+        segs.forEach((seg, idx) => {
+            seg._index = idx;
+        });
+
         if (type === 'answer') {
             mappedItem.questionID = data.question.id;
         }
@@ -167,7 +172,7 @@ const extractTOC = (segs) => {
     const items = [];
     segs.forEach((seg, idx) => {
         if (seg.type === 'heading' && seg.heading?.text) {
-            items.push({ id: `heading-${idx}`, text: seg.heading.text });
+            items.push({ id: `heading-${idx}`, text: seg.heading.text, level: seg.heading.level });
         }
     });
     return items;
@@ -369,6 +374,50 @@ const saveAsImage = async () => {
     }
 };
 
+const openOriginalLink = () => {
+    let url = '';
+    switch (type) {
+        case 'answer':
+            url = `https://www.zhihu.com/answer/${id}`;
+            break;
+        case 'pin':
+            url = `https://www.zhihu.com/pin/${id}`;
+            break;
+        case 'article':
+            url = `https://zhuanlan.zhihu.com/p/${id}`;
+            break;
+        default:
+            f7.dialog.alert(`暂不支持该链接转换 (Type: ${type}, ID: ${id})`);
+            return;
+    }
+    if (url) window.$openLink(url);
+};
+
+const copyOriginalLink = () => {
+    let url = '';
+    switch (type) {
+        case 'answer': url = `https://www.zhihu.com/answer/${id}`; break;
+        case 'pin': url = `https://www.zhihu.com/pin/${id}`; break;
+        case 'article': url = `https://zhuanlan.zhihu.com/p/${id}`; break;
+        default:
+            f7.dialog.alert(`暂不支持该链接复制 (Type: ${type}, ID: ${id})`);
+            return;
+    }
+
+    // 简单的复制逻辑
+    const textArea = document.createElement("textarea");
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        f7.toast.show({ text: '链接已复制到剪贴板', closeTimeout: 2000 });
+    } catch (err) {
+        f7.toast.show({ text: '复制失败' });
+    }
+    document.body.removeChild(textArea);
+};
+
 </script>
 
 <template>
@@ -390,6 +439,8 @@ const saveAsImage = async () => {
         <!-- Article Actions Popover -->
         <f7-popover class="article-actions-popover">
             <f7-list>
+                <f7-list-item title="打开原始知乎网页" link popover-close @click="openOriginalLink" />
+                <f7-list-item title="复制原始知乎链接" link popover-close @click="copyOriginalLink" />
                 <f7-list-item title="以图片形式保存" link popover-close @click="saveAsImage" />
                 <f7-list-item title="举报" link popover-close
                     @click="$openLink(`https://www.zhihu.com/report?id=${id}&type=${type}&source=android&ab_signature=`)" />
@@ -420,18 +471,23 @@ const saveAsImage = async () => {
                 </f7-card>
 
                 <!-- TOC Card -->
-                <f7-card v-if="tocItems.length > 0" class="toc-card">
+                <f7-card v-if="tocItems.length > 0" class="toc-card premium-toc-card">
                     <f7-card-content>
-                        <div class="toc-header">目录</div>
-                        <div v-for="toc in visibleTocItems" :key="toc.id" class="toc-link"
-                            @click="scrollToHeading(toc.id)">
-                            {{ toc.text }}
+                        <div class="toc-header-wrapper display-flex align-items-center margin-bottom">
+                            <f7-icon f7="list_bullet_indent" size="20" class="margin-right-half color-theme" />
+                            <div class="toc-header">文章目录</div>
                         </div>
-                        <div v-if="tocItems.length > 3" class="toc-toggle" @click="isTocExpanded = !isTocExpanded">
-                            <span>{{ isTocExpanded ? '收起' : '展开更多' }}</span>
-                            <f7-icon :ios="isTocExpanded ? 'f7:chevron_up' : 'f7:chevron_down'"
-                                :md="isTocExpanded ? 'material:expand_less' : 'material:expand_more'"
-                                class="toc-toggle-icon" />
+                        <div class="toc-list-container">
+                            <div v-for="toc in visibleTocItems" :key="toc.id" class="toc-item-row"
+                                :class="[`level-${toc.level || 1}`]" @click="scrollToHeading(toc.id)">
+                                <div class="toc-dot"></div>
+                                <div class="toc-text">{{ toc.text }}</div>
+                            </div>
+                        </div>
+                        <div v-if="tocItems.length > 3" class="toc-toggle-premium"
+                            @click="isTocExpanded = !isTocExpanded">
+                            <span>{{ isTocExpanded ? '收起目录' : `展开全部 ${tocItems.length} 个章节` }}</span>
+                            <f7-icon :f7="isTocExpanded ? 'chevron_up' : 'chevron_down'" size="14" />
                         </div>
                     </f7-card-content>
                 </f7-card>
@@ -681,82 +737,157 @@ const saveAsImage = async () => {
 
 .bottom-float-container {
     position: absolute;
-    bottom: 24px;
+    bottom: 20px;
     left: 0;
     right: 0;
     display: flex;
     justify-content: center;
     pointer-events: none;
-    z-index: 40;
+    z-index: 500;
 }
 
 .float-bar {
     pointer-events: auto;
     display: flex;
     align-items: center;
-    padding: 8px 24px;
-    border-radius: 50px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    gap: 12px;
+    padding: 4px 8px;
+    border-radius: 28px;
+    background: rgba(var(--f7-bg-color-rgb, 255, 255, 255), 0.75);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(var(--f7-theme-color-rgb), 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    gap: 2px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.float-bar:hover {
+    transform: translateY(-2px);
 }
 
 .action-group {
     display: flex;
     align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--f7-text-color);
+    position: relative;
+    overflow: hidden;
 }
+
 
 .action-group:active {
-    opacity: 0.6;
-}
-
-.action-count {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-left: 2px;
-    min-width: 20px;
+    background: rgba(var(--f7-theme-color-rgb), 0.1);
+    transform: scale(0.92);
 }
 
 .action-group.active-primary {
     color: var(--f7-theme-color);
+    background: rgba(var(--f7-theme-color-rgb), 0.08);
 }
 
-.action-group.active-primary :deep(.f7-icon) {
-    color: var(--f7-theme-color);
+.action-count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-left: 6px;
+    min-width: 24px;
 }
 
 .vertical-divider {
     width: 1px;
-    height: 20px;
+    height: 18px;
+    background: rgba(var(--f7-text-color-rgb, 0, 0, 0), 0.1);
     margin: 0 4px;
 }
 
+.toc-card.premium-toc-card {
+    border-radius: 16px;
+    background: rgba(var(--f7-theme-color-rgb), 0.02);
+    border: 1px solid rgba(var(--f7-theme-color-rgb), 0.08);
+    box-shadow: none;
+    margin: 16px 0 32px 0;
+}
+
 .toc-header {
-    font-weight: bold;
-    margin-bottom: 12px;
-    font-size: 1rem;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--f7-theme-color);
 }
 
-.toc-link {
-    padding: 8px 0;
-    font-size: 0.9rem;
+.toc-list-container {
+    position: relative;
+    padding-left: 12px;
+}
+
+.toc-list-container::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: rgba(var(--f7-theme-color-rgb), 0.1);
+    border-radius: 2px;
+}
+
+.toc-item-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
     cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
 }
 
-.toc-link:last-child {
-    border-bottom: none;
+.toc-item-row:active {
+    opacity: 0.6;
+    transform: translateX(4px);
 }
 
-.toc-toggle {
+.toc-dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(var(--f7-theme-color-rgb), 0.3);
+    border-radius: 50%;
+    margin-right: 12px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.toc-item-row:hover .toc-dot {
+    background: var(--f7-theme-color);
+    transform: scale(1.3);
+}
+
+.toc-text {
+    font-size: 15px;
+    color: var(--f7-text-color);
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.toc-item-row.level-2 {
+    margin-left: 20px;
+}
+
+.toc-item-row.level-3 {
+    margin-left: 40px;
+}
+
+.toc-toggle-premium {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     padding-top: 12px;
-    font-size: 0.875rem;
-    cursor: pointer;
     margin-top: 8px;
-    transition: background-color 0.2s;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--f7-theme-color);
+    cursor: pointer;
+    border-top: 1px dashed rgba(var(--f7-theme-color-rgb), 0.1);
 }
 
 .toc-toggle-icon {

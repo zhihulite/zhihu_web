@@ -79,8 +79,13 @@ const getCardInfo = (segment) => {
             </component>
 
             <figure v-else-if="segment.type === 'image'" class="image-figure">
-                <img :src="segment.image.urls?.[0]" :alt="segment.image.description || 'Article Image'"
-                    class="article-image" loading="lazy" @click="handleImageClick(segment.image.urls?.[0])" />
+                <div class="image-wrapper" :style="{
+                    aspectRatio: (segment.image.width && segment.image.height) ? `${segment.image.width} / ${segment.image.height}` : 'auto',
+                    backgroundColor: '#f5f5f5'
+                }">
+                    <img :src="segment.image.urls?.[0]" :alt="segment.image.description || 'Article Image'"
+                        class="article-image" loading="lazy" @click="handleImageClick(segment.image.urls?.[0])" />
+                </div>
                 <figcaption v-if="segment.image.description" class="image-caption">
                     {{ segment.image.description }}
                 </figcaption>
@@ -284,16 +289,20 @@ const getCardInfo = (segment) => {
 
 .app-tip {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    border-radius: 12px;
-    padding: 16px;
-    margin: 16px 0;
-    font-size: 0.875rem;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin: 24px 0;
+    font-size: 14px;
+    border-left: 3px solid var(--f7-theme-color);
+    color: var(--f7-text-color);
+    opacity: 0.8;
 }
 
 .tip-icon {
-    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    color: var(--f7-theme-color);
 }
 
 .hr-divider {

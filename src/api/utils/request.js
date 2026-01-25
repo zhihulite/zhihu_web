@@ -117,7 +117,7 @@ function addMethods(fn) {
 	return fn;
 }
 
-window.unifiedFetch = addMethods(rawUnifiedFetch);
+window.rawUnifiedFetch = addMethods(rawUnifiedFetch);
 
 
 async function checkedUnifiedFetch(url, options = {}) {

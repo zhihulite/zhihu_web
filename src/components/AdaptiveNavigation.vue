@@ -71,7 +71,7 @@ onMounted(() => {
 
 <template>
     <div class="nav-wrapper">
-        <div class="logo-box">Z</div>
+        <div class="logo-box" @click="$openLink('https://github.com/zhihulite/zhihu_web')">Z</div>
 
         <f7-list menu-list>
             <f7-list-item v-for="item in NAV_ITEMS" :key="item.id" :title="item.label" link

@@ -8,7 +8,7 @@ const appBuild = '21210'
 const appBundle = 'com.zhihu.android'
 const appID = '1355'
 const platformId = '12'
-const unifiedFetch = window.unifiedFetch
+const rawUnifiedFetch = window.rawUnifiedFetch
 
 const x_app_za = `OS=Android&Release=15&Model=Pixel&VersionName=${appVersion}&VersionCode=${appBuild}&Product=${appBundle}&Installer=Google+Play&DeviceType=AndroidPhone`
 const user_agent = `${appBundle}/Futureve/${appVersion} Mozilla/5.0 (Linux; Android; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36`
@@ -17,11 +17,11 @@ function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) 
 function generateRandomHex(length) { return Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase() }
 
 function generateZhihuFormdata() {
-  const fr_mem = generateRandomNumber(100, 500); // 剩余内存100-500MB
-  const tt_mem = generateRandomNumber(400, 800); // 总内存400-800MB
-  const storage = generateRandomNumber(50, 200); // 存储空间50-200GB
-  const fr_st = storage * 1000; // 转换为MB单位
-  const tt_st = (storage + generateRandomNumber(20, 100)) * 1000; // 总存储稍大
+  const fr_mem = randInt(100, 500)
+  const tt_mem = randInt(400, 800)
+  const storage = randInt(50, 200)
+  const fr_st = storage * 1000
+  const tt_st = (storage + randInt(20, 100)) * 1000
 
   const params = new URLSearchParams({
     app_build: appBuild,
@@ -153,7 +153,7 @@ async function getZstInternal(laesDecryptZst, authorization, udid = '', zst82 = 
     'Content-Type': 'application/x-www-form-urlencoded'
   }
 
-  const json = await unifiedFetch.post('https://api.zhihu.com/zst/events/s', enc, {
+  const json = await rawUnifiedFetch.post('https://api.zhihu.com/zst/events/s', enc, {
     headers
   })
   const [r82, r81] = laesDecryptZst(json.st_ruid).split('|')
@@ -201,7 +201,7 @@ export async function requestGuestCredential() {
     'Cookie': ' '
   }
 
-  const data = await unifiedFetch.post('https://api.zhihu.com/api/account/prod/init/udid_guest', postdata, {
+  const data = await rawUnifiedFetch.post('https://api.zhihu.com/api/account/prod/init/udid_guest', postdata, {
     headers
   })
 

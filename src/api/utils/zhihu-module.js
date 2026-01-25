@@ -12,48 +12,19 @@ function getMsid() {
     return localStorage.getItem('zhihu_msid') || 'DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1';
 }
 
+function getUdid() {
+    return localStorage.getItem('zhihu_udid') || 'DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1';
+}
+
 class ZhihuRequest {
     constructor({ encryptData, loginData, zsts = {}, defaultHeaders = {} }) {
         if (typeof encryptData !== 'function') {
             throw new Error('必须提供 encryptData 加密函数');
         }
 
-        console.log('BindLoginData:', loginData);
-        this.udid = this.getUdid();
-
-        loginData = loginData.guest || loginData;
-        this.accessToken = "Bearer " + loginData.access_token;
-        if (loginData.udid) {
-            this.cookie["d_c0"] = loginData.udid;
-        }
-
-        this.cookie = Object.entries(loginData.cookie || {})
-            .filter(([_, v]) => v)
-            .map(([k, v]) => `${k}=${v}`)
-            .join('; ');
-
-        const [zst82, zst81] = Array.isArray(zsts) ? zsts : [];
-        this.zst81 = zst81;
-        this.zst82 = zst82;
-
         this.encryptData = encryptData.bind(this);
 
         const x_app_za = `OS=Android&Release=15&Model=Pixel&VersionName=10.12.0&VersionCode=${appBuild}&Product=com.zhihu.android&Installer=Google+Play&DeviceType=AndroidPhone`;
-        const user_agent = `${appBundle}/Futureve/${appVersion} Mozilla/5.0 (Linux; Android; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36`
-
-        // 将默认 Headers 分为 App 专用和通用两部分
-        this.commonDefaultHeaders = {
-            "User-Agent": user_agent,
-            "x-Zse-93": apiVersion,
-            ...(this.cookie && { "Cookie": this.cookie }),
-            ...(this.accessToken && { "Authorization": this.accessToken }),
-            ...(this.udid && { "x-udid": this.udid }),
-            ...(getMsid() && { "x-ms-id": getMsid() }),
-            ...(this.zst81 && { "X-ZST-81": this.zst81 }),
-            ...(this.zst82 && { "X-ZST-82": this.zst82 }),
-            ...defaultHeaders,
-        };
-
         this.appSpecificHeaders = {
             "x-api-version": "3.0.93",
             "x-app-version": appVersion,
@@ -63,24 +34,12 @@ class ZhihuRequest {
             "x-app-build": "release",
         };
 
-        this.defaultHeaders = {
-            ...this.commonDefaultHeaders,
-            ...this.appSpecificHeaders
-        };
+        this.updateLoginData(loginData, zsts, defaultHeaders)
 
-    }
-
-    getUdid() {
-        if (!this.udid) {
-            this.udid = "UraTB9TKRhtLBYAOB4UmHKrPn18Tg811TFQ=";
-            console.warn("提供 loginData 缺少 udid，推荐使用游客登录获取 udid，未绑定 udid，使用默认 udid");
-        }
-        return this.udid;
     }
 
     updateLoginData(loginData, zsts = {}, defaultHeaders = {}) {
         console.log('UpdateLoginData:', loginData);
-        this.udid = this.getUdid();
 
         loginData = loginData.guest || loginData;
         this.accessToken = "Bearer " + loginData.access_token;
@@ -98,14 +57,14 @@ class ZhihuRequest {
             this.zst82 = zst82;
         }
 
-        // 重新构建headers
+        const user_agent = `${appBundle}/Futureve/${appVersion} Mozilla/5.0 (Linux; Android; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36`
         this.commonDefaultHeaders = {
-            "User-Agent": this.commonDefaultHeaders["User-Agent"],
+            "User-Agent": user_agent,
             "x-Zse-93": apiVersion,
             ...(this.cookie && { "Cookie": this.cookie }),
             ...(this.accessToken && { "Authorization": this.accessToken }),
-            ...(getMsid() && { "x-msid": getMsid() }),
-            ...(this.udid && { "x-udid": this.udid }),
+            ...(getMsid() && { "x-ms-id": getMsid() }),
+            ...(getUdid() && { "x-udid": getUdid() }),
             ...(this.zst81 && { "X-ZST-81": this.zst81 }),
             ...(this.zst82 && { "X-ZST-82": this.zst82 }),
             ...defaultHeaders,
@@ -167,7 +126,7 @@ class ZhihuRequest {
             }),
         };
         delete requestHeaders.Cookie;
-        delete requestHeaders.coookie;
+        delete requestHeaders.cookie;
         requestHeaders.Cookie = finalCookie
 
         let body = null;
@@ -240,7 +199,7 @@ export async function initZhihu() {
                 throw new Error(`URL must start with ${apiPrefix}`);
             }
             const apiPath = data.slice(apiPrefix.length)
-            data = `${apiVersion}+${apiPath}+${appVersion}+${this.accessToken}+${this.udid}`
+            data = `${apiVersion}+${apiPath}+${appVersion}+${this.accessToken}+${getUdid()}`
             data = CryptoJS.MD5(CryptoJS.enc.Utf8.parse(data)).toString(CryptoJS.enc.Hex);
         }
 

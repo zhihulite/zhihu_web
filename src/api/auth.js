@@ -84,13 +84,7 @@ function isLogin() {
 const tokenManager = {
     getAccessToken: () => accessToken,
     getRefreshToken: () => refreshToken,
-    getLoginData: () => {
-        const udid = localStorage.getItem('zhihu_udid');
-        if (udid && loginData) {
-            return { ...loginData, udid };
-        }
-        return loginData;
-    },
+    getLoginData: () => loginData,
     get isGuest() {
         return isGuest;
     },
