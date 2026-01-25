@@ -614,6 +614,6 @@ const convertLinksToOpenlink = function (html) {
 
 .list .item-text {
     max-height: none !important;
-    --webkit-line-clamp: none !important;
+    -webkit-line-clamp: unset !important;
 }
 </style>

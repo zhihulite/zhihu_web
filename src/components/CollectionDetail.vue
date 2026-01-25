@@ -4,8 +4,16 @@ import { f7 } from 'framework7-vue';
 import $http from '../api/http.js';
 import CollectionSheet from './CollectionSheet.vue';
 import { useUser } from '@/composables/userManager';
+import { useHistory } from '../composables/useHistory.js';
 
-const props = defineProps(['f7route', 'f7router']);
+const props = defineProps({
+    f7route: Object,
+    f7router: Object,
+    routeId: String
+});
+const { register, restoreState } = useHistory(props, 'collection_detail');
+const hasHistory = !!restoreState();
+
 const collectionId = props.f7route.params.id;
 
 const { currentUser } = useUser();
@@ -19,6 +27,21 @@ const lastResult = ref(null);
 
 const showCollectionSheet = ref(false);
 const activeItem = ref(null);
+const pageRef = ref(null);
+
+register({
+    state: {
+        collectionInfo,
+        items,
+        isLoading,
+        hasMore,
+        lastResult,
+        isOwner
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content')
+    })
+});
 
 const fetchCollectionInfo = async () => {
     try {
@@ -196,13 +219,16 @@ const toggleFollowCollection = async () => {
 };
 
 onMounted(() => {
-    fetchCollectionInfo();
-    fetchContents(true);
+    if (!hasHistory) {
+        fetchCollectionInfo();
+        fetchContents(true);
+    }
 });
 </script>
 
 <template>
-    <f7-page name="collection-detail" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite">
+    <f7-page name="collection-detail" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite"
+        :ref="(el) => pageRef = el">
         <f7-navbar :title="collectionInfo?.title || '收藏夹详情'" back-link="返回">
             <f7-nav-right>
                 <f7-link v-if="isOwner" icon-only @click="deleteEntireCollection">

@@ -4,14 +4,19 @@ import TabLayout from './TabLayout.vue';
 import $http from '../api/http.js';
 import { HistoryService } from '../services/historyService.js';
 import { f7 } from 'framework7-vue';
+import { useHistory } from '../composables/useHistory.js';
 import { useUser } from '../composables/userManager.js';
 
 const { currentUser } = useUser();
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'user_profile');
+const hasHistory = !!restoreState();
 
 const userId = props.f7route?.params?.id;
 const userInfo = ref(null);
@@ -22,6 +27,27 @@ const answerSort = ref('created');
 const tabData = reactive({});
 
 const tabs = ref([]);
+
+const pageRef = ref(null);
+const scrollElements = {};
+const setScrollRef = (elRef, id) => {
+    if (elRef) scrollElements[id] = elRef.$el;
+};
+
+register({
+    state: {
+        userInfo,
+        loading,
+        activeTab,
+        answerSort,
+        tabData,
+        tabs
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content'),
+        ...scrollElements
+    })
+});
 
 const fetchTabs = async () => {
     const urlsMap = {
@@ -326,10 +352,12 @@ const headerHeight = ref(0);
 const headerRef = ref(null);
 
 onMounted(() => {
-    fetchUserInfo();
-    fetchTabs().then(() => {
-        if (activeTab.value) fetchContent(activeTab.value);
-    });
+    if (!hasHistory) {
+        fetchUserInfo();
+        fetchTabs().then(() => {
+            if (activeTab.value) fetchContent(activeTab.value);
+        });
+    }
 
     nextTick(() => {
         if (headerRef.value) {
@@ -381,7 +409,7 @@ const handleItemClick = (f7router, item) => {
             if (id.includes('关注')) {
                 f7router.navigate(`/collections/${userId}/following`);
             } else {
-                f7router.navigate(`/collections/${userId}`);
+                f7router.navigate(`/collections/${userId}/mine`);
             }
         } else {
             f7router.navigate(`/people-more/${userId}/${id}`);
@@ -457,7 +485,7 @@ const showSearchPrompt = () => {
 </script>
 
 <template>
-    <f7-page class="user-profile">
+    <f7-page class="user-profile" :ref="(el) => pageRef = el">
         <f7-navbar class="profile-navbar">
             <f7-nav-left>
                 <f7-link icon-only @click="handleBack">
@@ -519,11 +547,12 @@ const showSearchPrompt = () => {
             </div>
 
             <div class="tabs-section">
-                <TabLayout v-if="tabs.length > 0" :tabs="tabs" :onChange="(id) => activeTab = id"
-                    :auto-page-content="false" :fixed="false" :scrollable="true">
+                <TabLayout v-if="tabs.length > 0" :tabs="tabs" :active-id="activeTab" :onChange="(id) => activeTab = id"
+                    :auto-page-content="false" :fixed="false" :scrollable="true" :initialActiveId="activeTab">
                     <template v-for="tab in tabs" :key="tab.id" #[tab.id]>
                         <f7-page-content ptr @ptr:refresh="(done) => onRefresh(tab.id, done)" infinite
-                            @infinite="() => onLoadMore(tab.id)" class="tab-scroll-content">
+                            :ref="(el) => setScrollRef(el, tab.id)" @infinite="() => onLoadMore(tab.id)"
+                            class="tab-scroll-content">
                             <div class="content-list">
                                 <div v-if="tab.id === 'answer'"
                                     class="tab-sort-bar padding-horizontal padding-top-half display-flex align-items-center">
@@ -570,11 +599,13 @@ const showSearchPrompt = () => {
                                     <f7-card-footer>
                                         <div class="content-metrics">
                                             <span class="metric-item" v-if="item.metrics?.likes !== undefined">
-                                                <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" /> {{
+                                                <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" />
+                                                {{
                                                     item.metrics.likes }}
                                             </span>
                                             <span class="metric-item" v-if="item.metrics?.comments !== undefined">
-                                                <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="14" /> {{
+                                                <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="14" />
+                                                {{
                                                     item.metrics.comments }}
                                             </span>
                                             <span class="metric-item" v-if="item.metrics?.views !== undefined">

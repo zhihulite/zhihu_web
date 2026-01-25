@@ -3,12 +3,17 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { HistoryService } from '../services/historyService.js';
 import $http from '../api/http.js';
 import CommentsSheet from './CommentsSheet.vue';
+import { useHistory } from '../composables/useHistory.js';
 
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'question_detail');
+const hasHistory = !!restoreState();
 
 const id = computed(() => props.f7route?.params?.id);
 const question = ref(null);
@@ -24,6 +29,27 @@ const sortOrder = ref('default');
 const hasMore = ref(true);
 const lastResult = ref(null);
 const isLoadingMore = ref(false);
+const pageRef = ref(null);
+
+register({
+    state: {
+        question,
+        answers,
+        isLoading,
+        isDialogOpen,
+        isFollowed,
+        isFollowLoading,
+        showComments,
+        showMenu,
+        sortOrder,
+        hasMore,
+        lastResult,
+        isLoadingMore
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content')
+    })
+});
 
 const formatCount = (count) => {
     return count > 1000 ? `${(count / 1000).toFixed(1)}k` : count;
@@ -164,7 +190,9 @@ const toggleFollow = async () => {
 };
 
 onMounted(() => {
-    onRefresh();
+    if (!hasHistory) {
+        onRefresh();
+    }
 });
 
 watch(sortOrder, () => {
@@ -177,7 +205,7 @@ watch(sortOrder, () => {
 
 <template>
     <f7-page class="question-detail" ptr @ptr:refresh="onRefresh" infinite :infinite-preloader="hasMore"
-        @infinite="onLoadMore">
+        @infinite="onLoadMore" :ref="(el) => pageRef = el">
         <f7-navbar>
             <f7-nav-left>
                 <f7-link icon-only @click="handleBack">
@@ -272,7 +300,7 @@ watch(sortOrder, () => {
                                 style="border-radius: 50%;"
                                 :onerror="`this.src='https://placehold.co/24x24/6366f1/ffffff?text=U'`" />
                             <span class="answer-author-name font-weight-bold margin-left-half">{{ answer.author
-                                }}</span>
+                            }}</span>
                         </div>
 
                         <div class="answer-excerpt text-color-gray">
@@ -310,7 +338,7 @@ watch(sortOrder, () => {
             </f7-page>
         </f7-popup>
 
-        <CommentsSheet v-model="showComments" :resourceId="id" resourceType="questions" :f7router="f7router" />
+        <CommentsSheet v-model="showComments" :resourceId="id" resourceType="question" :f7router="f7router" />
 
         <f7-popover class="menu-popover">
             <f7-list>

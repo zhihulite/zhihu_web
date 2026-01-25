@@ -6,11 +6,13 @@ import MoreMenuDialog from './components/MoreMenuDialog.vue';
 import { logout } from './api/auth.js';
 import { useUser } from '@/composables/userManager';
 import routes from './f7-routes.js';
+import store from './store.js';
 
 const { resetUser, refreshUser } = useUser();
 
 const isMoreDialogOpen = ref(false);
 const isMobile = ref(false);
+const isNativeApp = ref(false);
 
 // Framework7 Parameters
 const f7params = {
@@ -29,16 +31,7 @@ const f7params = {
   } : {},
 };
 
-const checkIsMobile = () => {
-  if (typeof window !== 'undefined') {
-    isMobile.value = window.innerWidth < 768;
-  }
-};
-
 onMounted(async () => {
-  checkIsMobile();
-  window.addEventListener('resize', checkIsMobile);
-
   f7ready((f7) => {
     loadThemeSettings(f7);
     // 仅在默认默认开启时处理
@@ -63,6 +56,8 @@ onMounted(async () => {
 
     }
     window.testf7 = f7;
+    isNativeApp.value = f7.device.capacitor || f7.device.cordova;
+    isMobile.value = !f7.device.desktop;
   });
 });
 
@@ -122,7 +117,6 @@ const loadThemeSettings = (f7) => {
 };
 
 onUnmounted(() => {
-  window.removeEventListener('resize', checkIsMobile);
   if (themeListener) {
     window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', themeListener);
   }
@@ -140,12 +134,14 @@ const handleLogout = () => {
     });
   }
 };
+const browserHistoryRoot = ref(isNativeApp.value ? undefined : window.location.pathname);
 </script>
 
 <template>
-  <f7-app v-bind="f7params">
+  <f7-app v-bind="f7params" :store="store">
 
-    <f7-view main class="safe-areas" url="/"></f7-view>
+    <f7-view main class="safe-areas" url="/" :browserHistory="!isNativeApp" :browserHistoryRoot="browserHistoryRoot"
+      :restoreScrollTopOnBack="false"></f7-view>
 
     <f7-panel left cover :visible-breakpoint="768" resizable>
       <f7-view>

@@ -15,7 +15,6 @@ const props = defineProps({
 });
 
 const isMobile = ref(false);
-
 const activeTab = ref('recommend');
 
 const allTabDefinitions = {
@@ -86,12 +85,6 @@ const loadCurrentTabData = (isRefresh) => {
     };
 
     fetchMap[activeTab.value]?.();
-};
-
-const handleResize = () => {
-    if (typeof window !== 'undefined') {
-        isMobile.value = window.innerWidth < 768;
-    }
 };
 
 // 监听主标签页切换
@@ -294,9 +287,9 @@ const defaultFollowing = loadDefaultFollowing();
 momentsActiveTab.value = defaultFollowing;
 
 const momentsTabs = [
-    { id: 'recommend', label: '精选', feedType: 'recommend', active: defaultFollowing === 'recommend' },
-    { id: 'timeline', label: '最新', feedType: 'timeline', active: defaultFollowing === 'timeline' },
-    { id: 'pin', label: '想法', feedType: 'pin', active: defaultFollowing === 'pin' }
+    { id: 'recommend', label: '精选', feedType: 'recommend' },
+    { id: 'timeline', label: '最新', feedType: 'timeline' },
+    { id: 'pin', label: '想法', feedType: 'pin' }
 ];
 
 const momentsTabData = reactive({});
@@ -765,9 +758,7 @@ const { isLoggedIn, onUserUpdate } = useUser();
 let unsubscribeUserUpdate = null;
 
 onMounted(() => {
-    handleResize();
-    window.addEventListener('resize', handleResize);
-
+    isMobile.value = !f7.device.desktop;
     loadSettings();
     window.addEventListener('home-settings-changed', loadSettings);
     window.addEventListener('home-recommendtab-settings-changed', fetchRecommendSections);
@@ -788,7 +779,6 @@ onMounted(() => {
 
 // 在组件卸载时取消订阅
 onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
     window.removeEventListener('home-settings-changed', loadSettings);
     window.removeEventListener('home-recommendtab-settings-changed', fetchRecommendSections);
     if (unsubscribeUserUpdate) {
@@ -856,7 +846,7 @@ watch(currentSectionIndex, refreshHighlight);
                 </div>
                 <!-- 已登录内容 -->
                 <TabLayout v-else :tabs="momentsTabs" :onChange="(id) => handleMomentsTabChange(id)" :nested="true"
-                    :autoPageContent="false" :fixed="false">
+                    :autoPageContent="false" :fixed="false" :initialActiveId="momentsActiveTab">
                     <template v-for="tab in momentsTabs" :key="tab.id" #[tab.id]>
                         <f7-page-content ptr @ptr:refresh="(done) => onMomentsRefresh(tab.id, done)" infinite
                             @infinite="onMomentsInfinite(tab.id)" class="moments-scroll-content">

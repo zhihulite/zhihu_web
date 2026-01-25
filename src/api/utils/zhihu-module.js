@@ -1,11 +1,13 @@
 import unifiedFetch from './request.js';
 import { tokenManager, tryRefreshToken } from '../auth.js';
+import { ensureGuestCredential } from './guest-request.js';
 
 const appVersion = "10.12.0"
 const apiVersion = "101_1_1.0"
 const appBuild = "21210"
 const appBundle = "com.zhihu.android"
 
+// 数盟id 使用模拟器可以无限生成 未登录必须添加上这个
 function getMsid() {
     return localStorage.getItem('zhihu_msid') || 'DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1';
 }
@@ -247,48 +249,22 @@ export async function initZhihu() {
 
     let loginData = null;
     let zsts = null;
-    let defaultHeaders = null;
     const isLogin = tokenManager.isLogin();
     if (isLogin) {
         await tryRefreshToken();
         loginData = tokenManager.getLoginData();
     }
 
-    // 如果没有提供登录数据，使用tokenManager的token或默认游客账号
+    // 如果没有提供登录数据，使用默认游客账号
     if (!loginData) {
-        // 使用默认游客账号
-        loginData = {
-            udid: 'UraTB9TKRhtLBYAOB4UmHKrPn18Tg811TFQ=',
-            guest: {
-                access_token: 'gt2.0AAAAAI9lh-cbRsrUB5O2UgAAAAxNVQJgAgC0JjzaArWyMX2KTozuYn71fSF1hQ==',
-                token_type: 'bearer',
-                user_type: 'guest',
-                id: '30f6dfae636d89c2078c6c0676a2929f',
-                uid: 1965481299495085000,
-                push_channel: 'pm_n_4c16eb12348347b7ad35126bb50e61d4',
-                URL: '',
-                cookie: {
-                    q_c0: '',
-                    z_c0: 'gt2.0AAAAAI9lh-cbRsrUB5O2UgAAAAxNVQJgAgC0JjzaArWyMX2KTozuYn71fSF1hQ=='
-                },
-                created_at: 0
-            }
-        };
-        zsts = [
-            '2.0IeUTj9TKRhsMAAAASwUAADIuMPui_GgAAAAAngWRhxBicaoZtrn_UBY16lmTsmU=',
-            '2uSTcNTKRhsbYMgVuWpD4QRnkRP48-uihQ9CAA=='
-        ];
-        // 数盟id 使用模拟器可以无限生成 未登录必须添加上这个
-        defaultHeaders = {
-            "x-ms-id": "DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1",
-        };
+        loginData = await ensureGuestCredential();
     }
 
+    zsts = JSON.parse(localStorage.getItem('zhihu_zsts'));
     globalZhihuInstance = new ZhihuRequest({
         encryptData: encrypt_data,
         loginData: loginData,
-        zsts: zsts,
-        defaultHeaders: defaultHeaders,
+        zsts: zsts
     });
 
 

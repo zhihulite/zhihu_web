@@ -6,13 +6,18 @@ import FeedCard from './FeedCard.vue';
 import $http from '../api/http.js';
 import { HistoryService } from '../services/historyService.js';
 import { useUser } from '../composables/userManager.js';
+import { useHistory } from '../composables/useHistory.js';
 
 const { currentUser } = useUser();
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'topic_detail');
+const hasHistory = !!restoreState();
 
 const topicId = computed(() => props.f7route?.params?.id);
 const topicInfo = ref(null);
@@ -35,6 +40,27 @@ const tabData = reactive({
     pins: { list: [], hasMore: true, loading: false, url: '', sort: 'new' },
     videos: { list: [], hasMore: true, loading: false, url: '', sort: 'new' },
     questions: { list: [], hasMore: true, loading: false, url: '', sort: 'new' }
+});
+
+const scrollElements = {};
+const setScrollRef = (elRef, id) => {
+    if (elRef) scrollElements[id] = elRef.$el;
+};
+
+const pageRef = ref(null);
+
+register({
+    state: {
+        topicInfo,
+        loading,
+        activeTab,
+        isFollowLoading,
+        tabData
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content'),
+        ...scrollElements
+    })
 });
 
 const urlTypes = {
@@ -211,7 +237,9 @@ const onLoadMore = (tabId) => {
 };
 
 onMounted(() => {
-    fetchTopicInfo();
+    if (!hasHistory) {
+        fetchTopicInfo();
+    }
 });
 
 watch(activeTab, (newTab) => {
@@ -273,7 +301,7 @@ const toggleFollow = async () => {
 </script>
 
 <template>
-    <f7-page class="topic-detail">
+    <f7-page class="topic-detail" :ref="(el) => pageRef = el">
         <f7-navbar class="profile-navbar">
             <f7-nav-left>
                 <f7-link icon-only @click="handleBack">
@@ -323,8 +351,8 @@ const toggleFollow = async () => {
             </div>
 
             <div class="tabs-section">
-                <TabLayout v-if="topicInfo" :tabs="tabs" :onChange="(id) => activeTab = id" :auto-page-content="false"
-                    :fixed="false">
+                <TabLayout v-if="topicInfo" :tabs="tabs" :active-id="activeTab" :onChange="(id) => activeTab = id"
+                    :auto-page-content="false" :fixed="false" :initialActiveId="activeTab">
                     <template v-for="tab in tabs" :key="tab.id" #[tab.id]>
                         <div v-if="tab.id === 'detail'" class="tab-static-container">
                             <div class="padding">
@@ -339,7 +367,8 @@ const toggleFollow = async () => {
                         </div>
 
                         <f7-page-content v-else ptr @ptr:refresh="(done) => onRefresh(tab.id, done)" infinite
-                            :infinite-preloader="false" @infinite="onLoadMore(tab.id)" class="tab-scroll-content">
+                            :infinite-preloader="false" @infinite="onLoadMore(tab.id)" class="tab-scroll-content"
+                            :ref="(el) => setScrollRef(el, tab.id)">
                             <div class="content-list">
                                 <div v-if="!tabData[tab.id].loading && tabData[tab.id].list.length === 0"
                                     class="empty-state">

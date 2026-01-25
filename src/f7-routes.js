@@ -1,4 +1,4 @@
-import { f7 } from 'framework7-vue';
+import { f7, f7ready } from 'framework7-vue';
 import userManager from './composables/userManager';
 
 import HomeView from './components/home/HomeView.vue';
@@ -20,15 +20,13 @@ import PeopleListView from './components/PeopleListView.vue';
 import PeopleMoreView from './components/PeopleMoreView.vue';
 import ColumnItemsView from './components/ColumnItemsView.vue';
 import SearchResultView from './components/SearchResultView.vue';
+import NotFoundView from './components/NotFoundView.vue';
 
 
-// 统一的登录检查函数
 const checkLogin = function ({ resolve, reject }) {
-    // 检查是否登录
     if (userManager.isLoggedIn.value) {
         resolve();
     } else {
-        // 未登录，提示登录
         f7.dialog.alert('请点击主页右上角登录');
         reject();
     }
@@ -50,12 +48,21 @@ const routes = [
     {
         path: '/following/:tab?',
         component: FollowingView,
-        beforeEnter: checkLogin,
+        options: {
+            needLogin: true,
+        }
     },
     {
-        path: '/collections/:userId?/:defaultTab?',
+        path: '/collections/:userId/:defaultTab',
         component: CollectionsView,
-        beforeEnter: checkLogin,
+    },
+    {
+        path: '/collections',
+        component: CollectionsView,
+        options: {
+            needLogin: true,
+            noRid: true
+        }
     },
     {
         path: '/daily',
@@ -96,10 +103,16 @@ const routes = [
     {
         path: '/notifications',
         component: NotificationsView,
+        options: {
+            needLogin: true,
+        }
     },
     {
         path: '/messages/:id?',
         component: MessagesView,
+        options: {
+            needLogin: true,
+        }
     },
     {
         path: '/people-list/:type/:id',
@@ -117,20 +130,39 @@ const routes = [
         path: '/search-result/:type/:q/:id?',
         component: SearchResultView,
     },
-    {
-        path: '/blocking',
-        component: PeopleListView,
-        options: {
-            props: {
-                type: 'block_all'
-            }
-        }
-    },
     // Catch-all 404
     {
         path: '(.*)',
-        component: HomeView, // Fallback to home or a 404 page
+        component: NotFoundView,
+        keepAlive: true
     },
 ];
 
-export default routes;
+
+const enhanceRoutes = (arr) => {
+    return arr.map((r) => {
+        const nr = { ...r };
+
+        if (nr.options?.needLogin === true) {
+            nr.beforeEnter = checkLogin;
+        }
+
+        /*
+        if (nr.keepAlive !== true && nr.options?.noRid !== true) {
+            nr.options = {
+                ...nr.options,
+            }
+            const props = nr.options.props || {};
+            nr.options.props = {
+                ...props,
+                get routeId() {
+                    return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                }
+            };
+        }
+        */
+        return nr;
+    });
+};
+
+export default enhanceRoutes(routes);

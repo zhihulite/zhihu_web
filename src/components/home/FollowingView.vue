@@ -4,7 +4,10 @@ import { f7 } from 'framework7-vue';
 import $http from '../../api/http.js';
 import { useUser } from '../../composables/userManager';
 
-const props = defineProps(['tab']);
+const props = defineProps({
+    f7router: Object,
+    tab: String
+});
 const { currentUser } = useUser();
 const userId = computed(() => currentUser.value?.id || '');
 const activeTab = ref(props.tab || 'questions');

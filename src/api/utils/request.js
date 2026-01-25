@@ -1,12 +1,7 @@
-window.canLoad = true;
+import { tryRefreshToken, tokenManager } from '../auth.js';
 
 function rawUnifiedFetch(url, options = {}) {
 	return new Promise((resolve, reject) => {
-		if (!window.canLoad) {
-			reject(new Error('Request blocked by window.canLoad'));
-			return;
-		}
-
 		const method = (options.method || 'GET').toUpperCase();
 		const headers = options.headers || {};
 		const body = options.body;
@@ -19,7 +14,7 @@ function rawUnifiedFetch(url, options = {}) {
 			delete headers.Cookie;
 			delete headers.cookie;
 		}
-		
+
 		const gmOptions = {
 			method: method,
 			url: url,
@@ -126,51 +121,52 @@ window.unifiedFetch = addMethods(rawUnifiedFetch);
 
 
 async function checkedUnifiedFetch(url, options = {}) {
-	const response = await rawUnifiedFetch(url, options);
-	const code = response.status;
-	const responseText = await response.clone().text();
+	let hasRetried401 = false;
 
-	let decodedContent = null;
-	try {
-		decodedContent = JSON.parse(responseText);
-	} catch (e) { }
+	while (true) {
+		const response = await rawUnifiedFetch(url, options);
+		const code = response.status;
+		const responseText = await response.clone().text();
 
-	if (code === 403) {
-		if (decodedContent?.error?.message && decodedContent?.error?.redirect) {
-			if (!window.canLoad) {
+		let decodedContent = null;
+		try {
+			decodedContent = JSON.parse(responseText);
+		} catch (e) { }
+
+		if (code === 403) {
+			if (decodedContent?.error?.message) {
+				alert(decodedContent.error.message)
+			}
+			if (decodedContent?.error?.redirect) {
+				window.location.href = decodedContent.error.redirect;
+			}
+		} else if (code === 401) {
+			if (tokenManager.isLogin()) {
+				if (!hasRetried401) {
+					try {
+						await tryRefreshToken(true);
+					} catch (e) { }
+					hasRetried401 = true;
+					continue;
+				}
+				try {
+					tokenManager.clear();
+				} catch (e) { }
+				alert("登录状态已失效 已自动帮你清除失效的登录状态 你以点击下方我知道了来跳转登录")
+				window.location.reload();
+			}
+		} else if (code === 400) {
+			if (decodedContent?.error?.message) {
 				alert(decodedContent.error.message);
-				if (confirm("立即跳转")) {
-					window.location.href = decodedContent.error.redirect;
-					alert("已跳转 成功后请自行退出");
-				}
-			}
-		} else if (decodedContent?.error?.message) {
-			alert(decodedContent.error.message);
-		}
-	} else if (code === 401) {
-		if (typeof window.getLogin === 'function' && window.getLogin()) {
-			if (!window.canLoad) {
-				alert("登录状态已失效 已自动帮你清除失效的登录状态 你可以点击下方我知道了来跳转登录");
-				if (confirm("我知道了")) {
-					if (typeof window.clearAllCookies === 'function') window.clearAllCookies();
-					localStorage.removeItem("signdata");
-					localStorage.removeItem("idx");
-					localStorage.removeItem("udid");
-					window.location.href = "https://www.zhihu.com/signin";
-				}
 			}
 		}
-	} else if (code === 400) {
-		if (decodedContent?.error?.message) {
-			alert(decodedContent.error.message);
+
+		if (code < 200 || code >= 300) {
+			throw new Error(`HTTP ${code} ${responseText}`);
 		}
-	}
 
-	if (code < 200 || code >= 300) {
-		throw new Error(`HTTP ${code} ${responseText}`);
+		return response;
 	}
-
-	return response;
 }
 
 export default addMethods(checkedUnifiedFetch);

@@ -3,17 +3,35 @@ import { ref, onMounted, computed } from 'vue';
 import { f7 } from 'framework7-vue';
 import $http from '../api/http.js';
 import FeedCard from './FeedCard.vue';
+import { useHistory } from '../composables/useHistory.js';
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'column_items');
+const hasHistory = !!restoreState();
 
 const columnId = props.f7route.params.id;
 const items = ref([]);
 const isLoading = ref(false);
 const hasMore = ref(true);
 const lastResult = ref(null);
+const pageRef = ref(null);
+
+register({
+    state: {
+        items,
+        isLoading,
+        hasMore,
+        lastResult
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content')
+    })
+});
 
 const fetchItems = async (isRefresh = false) => {
     if (isLoading.value) return;
@@ -101,12 +119,15 @@ const onInfinite = () => {
 };
 
 onMounted(() => {
-    fetchItems(true);
+    if (!hasHistory) {
+        fetchItems(true);
+    }
 });
 </script>
 
 <template>
-    <f7-page name="column-items" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite">
+    <f7-page name="column-items" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite"
+        :ref="(el) => pageRef = el">
         <f7-navbar title="专栏详情" back-link="返回" />
 
         <div class="items-list">

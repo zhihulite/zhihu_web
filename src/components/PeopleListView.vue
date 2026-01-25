@@ -3,11 +3,17 @@ import { ref, onMounted, computed } from 'vue';
 import { f7 } from 'framework7-vue';
 import $http from '../api/http.js';
 import { useUser } from '@/composables/userManager';
+import { useHistory } from '../composables/useHistory.js';
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+
+const { register, restoreState } = useHistory(props, 'people_list');
+const hasHistory = !!restoreState();
 
 const { id: routeId, type: routeType } = props.f7route?.params || {};
 const id = routeId || props.id || 'self';
@@ -20,6 +26,20 @@ const people = ref([]);
 const isLoading = ref(false);
 const hasMore = ref(true);
 const lastResult = ref(null);
+const pageRef = ref(null);
+
+register({
+    state: {
+        people,
+        isLoading,
+        hasMore,
+        lastResult,
+        currentType
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content')
+    })
+});
 
 const pageTitle = computed(() => {
     switch (currentType.value) {
@@ -80,9 +100,9 @@ const fetchPeople = async (isRefresh = false) => {
 };
 
 const resolveData = (item) => {
-    const member = 
-        item.type === 'pin_action' 
-            ? item.member 
+    const member =
+        item.type === 'pin_action'
+            ? item.member
             : (item.member || item);
 
     const avatar = member?.avatar_url;
@@ -92,7 +112,7 @@ const resolveData = (item) => {
     const actionType = item.type === 'pin_action' ? item.action_type : undefined;
     const isFollowing = item.is_following || item.relationship?.is_following || false;
     const isBlocked = currentType.value.startsWith('block') || item.is_blocking || false;
-    
+
     return {
         id,
         name,
@@ -176,12 +196,15 @@ const onInfinite = () => {
 };
 
 onMounted(() => {
-    fetchPeople(true);
+    if (!hasHistory) {
+        fetchPeople(true);
+    }
 });
 </script>
 
 <template>
-    <f7-page name="people-list" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite">
+    <f7-page name="people-list" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite"
+        :ref="(el) => pageRef = el">
         <f7-navbar :title="pageTitle" back-link="返回">
             <f7-nav-right v-if="currentType.startsWith('block')">
                 <f7-link icon-only @click="openBlockMenu">

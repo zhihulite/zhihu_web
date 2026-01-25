@@ -8,6 +8,10 @@ const props = defineProps({
         type: Array, // Array { id, label, icon?: string | { ios, md } }
         required: true
     },
+    initialActiveId: {
+        type: String,
+        default: undefined
+    },
     onChange: {
         type: Function,
         default: undefined
@@ -52,7 +56,7 @@ const getTabId = (id) => `mtl-${instanceId}-${id}`
         <!-- top为0防止嵌套tabbar存在额外的top -->
         <f7-toolbar tabbar top :scrollable="scrollable" class="tab-bar" :class="{ 'tab-bar-static': !fixed }">
             <f7-link v-for="(tab, index) in tabs" :key="tab.id" :tab-link="`#${getTabId(tab.id)}`"
-                @click="onTabShow(tab)" :tab-link-active="tab.active || (index === 0 && !tabs.some(t => t.active))">
+                @click="onTabShow(tab)" :tab-link-active="initialActiveId ? tab.id === initialActiveId : index === 0">
                 <f7-icon v-if="tab.icon" :icon="typeof tab.icon === 'string' ? tab.icon : undefined"
                     :ios="typeof tab.icon === 'object' ? tab.icon.ios : undefined"
                     :md="typeof tab.icon === 'object' ? tab.icon.md : undefined"
@@ -64,7 +68,7 @@ const getTabId = (id) => `mtl-${instanceId}-${id}`
 
         <f7-tabs swipeable :class="{ 'tabs-auto-page-content': !autoPageContent }">
             <f7-tab v-for="(tab, index) in tabs" :key="tab.id" :id="getTabId(tab.id)" @tab:show="onTabShow(tab)"
-                :tab-active="tab.active || (index === 0 && !tabs.some(t => t.active))">
+                :tab-active="initialActiveId ? tab.id === initialActiveId : index === 0">
                 <slot :name="tab.id"></slot>
             </f7-tab>
         </f7-tabs>

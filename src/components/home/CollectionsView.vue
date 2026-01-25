@@ -3,17 +3,27 @@ import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { f7 } from 'framework7-vue';
 import $http from '../../api/http.js';
 import { useUser } from '@/composables/userManager';
+import { useHistory } from '../../composables/useHistory.js';
 
 const props = defineProps({
     f7router: Object,
-    f7route: Object
+    f7route: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'collections_view');
+const hasHistory = !!restoreState();
 
 const activeTab = ref(props.f7route?.params?.defaultTab || 'mine');
 const { currentUser } = useUser();
 const routeUserId = props.f7route?.params?.userId;
 const effectiveUserId = computed(() => routeUserId || currentUser.value?.id || '');
 const isOwnProfile = computed(() => !routeUserId || routeUserId === currentUser.value?.id);
+
+const scrollElements = {};
+const setScrollRef = (elRef, id) => {
+    if (elRef) scrollElements[id] = elRef.$el;
+};
 
 const tabs = computed(() => {
     const uid = effectiveUserId.value;
@@ -42,6 +52,17 @@ const initTabs = () => {
 };
 
 initTabs();
+
+// 非主页收藏才缓存
+if (props.f7route?.params?.defaultTab) {
+    register({
+        state: {
+            activeTab,
+            tabData
+        },
+        scroll: () => scrollElements
+    });
+}
 
 const showCreatePopup = ref(false);
 const createData = reactive({
@@ -171,7 +192,7 @@ const doCreate = async () => {
 };
 
 onMounted(() => {
-    if (effectiveUserId.value) {
+    if (!hasHistory && effectiveUserId.value) {
         fetchTabData(activeTab.value, true);
     }
 });
@@ -230,7 +251,7 @@ const showSearchPrompt = () => {
             <f7-tab v-for="tab in tabs" :key="tab.id" :id="`col-tab-${tab.id}`" :tab-active="activeTab === tab.id"
                 class="collections-tab-content" @tab:show="activeTab = tab.id">
                 <f7-page-content ptr @ptr:refresh="(done) => onRefresh(tab.id, done)" infinite
-                    @infinite="onInfinite(tab.id)" class="tab-scroll-content">
+                    @infinite="onInfinite(tab.id)" class="tab-scroll-content" :ref="(el) => setScrollRef(el, tab.id)">
 
                     <div class="card-list-container">
                         <!-- Create New Card for 'mine' tab (only for own profile) -->

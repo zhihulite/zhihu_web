@@ -6,11 +6,17 @@ import CollectionSheet from './CollectionSheet.vue';
 import { HistoryService } from '../services/historyService.js';
 import { f7 } from 'framework7-vue';
 import html2canvas from 'html2canvas-pro';
+import { useHistory } from '../composables/useHistory.js';
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String,
 });
+
+
+const { register, restoreState } = useHistory(props, 'article_detail');
+const hasHistory = !!restoreState();
 
 const item = ref(null);
 const loading = ref(true);
@@ -19,11 +25,28 @@ const showCollection = ref(false);
 const showToc = ref(false);
 const tocItems = ref([]);
 const isTocExpanded = ref(false);
-const scrollRef = ref(null);
 const imageList = ref([]);
 const activeImage = ref(0);
 const photoBrowserPhotos = ref([]);
 const photoBrowserRef = ref(null);
+const pageContentRef = ref(null);
+
+register({
+    state: {
+        item,
+        loading,
+        showComments,
+        showCollection,
+        showToc,
+        tocItems,
+        isTocExpanded,
+        imageList,
+        activeImage
+    },
+    scroll: () => ({
+        main: pageContentRef.value?.$el
+    })
+});
 
 const handleImageClick = (data) => {
     const urls = data.allUrls || [data.url];
@@ -250,7 +273,7 @@ const navigateToUser = (userId) => {
 };
 
 onMounted(() => {
-    if (id) {
+    if (!hasHistory && id) {
         fetchData();
     }
 });
@@ -274,7 +297,7 @@ const saveAsImage = async () => {
 
     try {
         // Find the main content wrapper
-        const contentWrapper = document.querySelector('.content-wrapper');
+        const contentWrapper = document.querySelector('.page-current .content-wrapper');
         if (!contentWrapper) {
             throw new Error('Content wrapper not found');
         }
@@ -283,7 +306,7 @@ const saveAsImage = async () => {
         const computedStyle = window.getComputedStyle(contentWrapper);
         const paddingBottom = parseInt(computedStyle.paddingBottom, 10);
         const actualContentHeight = contentWrapper.scrollHeight - paddingBottom;
-        
+
         // Use html2canvas-pro to capture the content
         const canvas = await html2canvas(contentWrapper, {
             width: contentWrapper.offsetWidth,
@@ -321,10 +344,10 @@ const saveAsImage = async () => {
                             if (blob) {
                                 const url = URL.createObjectURL(blob);
                                 window.open(url, '_blank');
-                                
+
                                 // Clean up
                                 URL.revokeObjectURL(url);
-                                
+
                                 f7.toast.show({ text: '截图已保存' });
                             }
                         }, 'image/png', 0.95);
@@ -342,7 +365,7 @@ const saveAsImage = async () => {
 
     } catch (error) {
         console.error('Failed to save as image:', error);
-        f7.toast.show({ text: '截图失败，请重试' });
+        f7.toast.show({ text: '截图失败，截图内容过长' });
     }
 };
 
@@ -378,7 +401,7 @@ const saveAsImage = async () => {
             <f7-preloader />
         </div>
 
-        <f7-page-content v-else-if="item" class="padding-bottom full-content">
+        <f7-page-content v-else-if="item" class="padding-bottom full-content" :ref="(el) => pageContentRef = el">
 
             <div v-if="item.imageUrl" class="hero-image-container">
                 <img :src="item.imageUrl" class="hero-image" />

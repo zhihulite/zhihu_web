@@ -5,11 +5,16 @@ import { HistoryService } from '../services/historyService.js';
 import CommentsSheet from './CommentsSheet.vue';
 import CollectionSheet from './CollectionSheet.vue';
 import $http from '../api/http.js';
+import { useHistory } from '../composables/useHistory.js';
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'zvideo_detail');
+const hasHistory = !!restoreState();
 
 const videoId = computed(() => props.f7route?.params?.id);
 const videoData = ref(null);
@@ -17,6 +22,20 @@ const isLoading = ref(true);
 const selectedQuality = ref('hd');
 const showComments = ref(false);
 const showCollection = ref(false);
+const pageRef = ref(null);
+
+register({
+    state: {
+        videoData,
+        isLoading,
+        selectedQuality,
+        showComments,
+        showCollection
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content')
+    })
+});
 
 const fetchVideoData = async () => {
     if (!videoId.value) return;
@@ -207,12 +226,14 @@ const handleAuthorClick = () => {
 };
 
 onMounted(() => {
-    fetchVideoData();
+    if (!hasHistory) {
+        fetchVideoData();
+    }
 });
 </script>
 
 <template>
-    <f7-page class="video-detail">
+    <f7-page class="video-detail" :ref="(el) => pageRef = el">
         <f7-navbar title="视频" back-link="返回" />
 
         <div v-if="isLoading" class="loading-state">

@@ -1,17 +1,35 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import $http from '../api/http.js';
+import { useHistory } from '../composables/useHistory.js';
 
 const props = defineProps({
     f7route: Object,
-    f7router: Object
+    f7router: Object,
+    routeId: String
 });
+
+const { register, restoreState } = useHistory(props, 'people_more');
+const hasHistory = !!restoreState();
 
 const { userId, moreId } = props.f7route.params;
 const items = ref([]);
 const isLoading = ref(false);
 const hasMore = ref(true);
 const lastResult = ref(null);
+const pageRef = ref(null);
+
+register({
+    state: {
+        items,
+        isLoading,
+        hasMore,
+        lastResult
+    },
+    scroll: () => ({
+        main: pageRef.value?.$el?.querySelector('.page-content')
+    })
+});
 
 const pageTitle = computed(() => {
     return moreId || '更多内容';
@@ -157,12 +175,15 @@ const handleItemClick = (f7router, item) => {
 };
 
 onMounted(() => {
-    fetchItems(true);
+    if (!hasHistory) {
+        fetchItems(true);
+    }
 });
 </script>
 
 <template>
-    <f7-page name="people-more" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite">
+    <f7-page name="people-more" ptr @ptr:refresh="onRefresh" infinite @infinite="onInfinite"
+        :ref="(el) => pageRef = el">
         <f7-navbar :title="pageTitle" back-link="返回" />
 
         <f7-list media-list no-hairlines class="more-list">

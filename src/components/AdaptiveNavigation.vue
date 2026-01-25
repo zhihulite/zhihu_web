@@ -26,7 +26,7 @@ const NAV_ITEMS = [
 ];
 
 const handleNavigate = (item) => {
-    if (f7.panel.get('left') && f7.panel.get('left').opened && window.innerWidth < 768) {
+    if (f7.panel.get('left') && f7.panel.get('left').opened) {
         f7.panel.close('left');
     }
 
@@ -38,7 +38,7 @@ const handleNavigate = (item) => {
 };
 
 const handleMobileMoreClick = () => {
-    if (f7.panel.get('left') && f7.panel.get('left').opened && window.innerWidth < 768) {
+    if (f7.panel.get('left') && f7.panel.get('left').opened) {
         f7.panel.close('left');
     }
     props.onMoreClick();

@@ -34,8 +34,10 @@ function loadTokens() {
 function saveTokens(newAccessToken, newRefreshToken, expiresIn, guest = false, login = null) {
     accessToken = newAccessToken;
     refreshToken = newRefreshToken;
-    expiresAt = Date.now() + expiresIn * 1000;
-    updateTime = Date.now() + (expiresIn * 1000 * 0.7); // 70% of expiry time
+    if (expiresIn) {
+        expiresAt = Date.now() + expiresIn * 1000;
+        updateTime = Date.now() + (expiresIn * 1000 * 0.7); // 70% of expiry time
+    }
     isGuest = guest;
     loginData = login;
 
@@ -58,6 +60,8 @@ function clearTokens() {
     isGuest = false;
     loginData = null;
     localStorage.removeItem('zhihu_auth');
+    localStorage.removeItem('zhihu_udid');
+    localStorage.removeItem('zhihu_zsts');
 }
 
 // 检查是否需要刷新 token
@@ -303,8 +307,8 @@ export async function logout() {
 }
 
 // 尝试刷新 token
-export async function tryRefreshToken() {
-    if (tokenManager.shouldRefresh()) {
+export async function tryRefreshToken(forceRefresh = false) {
+    if (tokenManager.shouldRefresh() || forceRefresh) {
         try {
             await refreshAccessToken();
         } catch (e) {
