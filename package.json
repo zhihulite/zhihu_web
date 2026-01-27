@@ -5,7 +5,7 @@
   "description": "Zhihu Lite Web App built with Framework7 Vue",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npx workbox generateSW workbox-config.js",
+    "build": "vite build && node scripts/generate-version.js && npx workbox generateSW workbox-config.js",
     "preview": "vite preview",
     "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/"
   },
@@ -20,9 +20,9 @@
     "vue": "^3.5.24"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitejs/plugin-vue": "^6.0.3",
     "cpy-cli": "^6.0.0",
-    "vite": "^7.3.0",
+    "vite": "^7.3.1",
     "workbox-cli": "^7.4.0"
   },
   "browserslist": [

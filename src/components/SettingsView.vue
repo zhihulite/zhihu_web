@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { f7, f7ListInput } from 'framework7-vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { f7 } from 'framework7-vue';
 import $http from '../api/http.js';
 
 const showCityDialog = ref(false);
@@ -8,6 +8,61 @@ const cityListContent = ref('');
 const cityInput = ref('');
 const isSubmitting = ref(false);
 
+const basePath = window.location.pathname.endsWith('/')
+  ? window.location.pathname
+  : window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+const appVersion = ref('');
+const buildTime = ref(process.env.NODE_ENV === 'production' ? '' : '开发版');
+const loadVersionInfo = async () => {
+  try {
+    const res = await fetch(basePath + 'version.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const cfg = await res.json();
+      appVersion.value = String(cfg.version || '');
+      buildTime.value = cfg.builtAt ? new Date(cfg.builtAt).toLocaleString('zh-CN') : '';
+      localStorage.setItem('app_version', appVersion.value);
+    }
+  } catch (e) {
+  }
+};
+const triggerSwUpdate = async () => {
+  if (f7 && f7.serviceWorker && typeof f7.serviceWorker.update === 'function') {
+    await f7.serviceWorker.update();
+  }
+};
+const checkForUpdate = async () => {
+    if (process.env.NODE_ENV !== 'production') {
+        f7.toast.show({ text: '开发版不支持检查更新' });
+        return;
+    }
+  f7.preloader.show();
+  try {
+    const res = await fetch(basePath + 'version.json?ts=' + Date.now(), { cache: 'no-cache' });
+    if (!res.ok) {
+      f7.toast.show({ text: '读取版本配置失败' });
+      return;
+    }
+    const cfg = await res.json();
+    const remoteVer = String(cfg.version || '');
+    const localVer = localStorage.getItem('app_version') || '';
+    if (remoteVer && remoteVer !== localVer) {
+      f7.dialog.confirm('检测到新版本，是否刷新更新？', '更新', async () => {
+        await triggerSwUpdate();
+        localStorage.setItem('app_version', remoteVer);
+        window.location.reload();
+      });
+    } else {
+      f7.toast.show({ text: '当前已是最新版本' });
+    }
+  } catch (e) {
+    f7.toast.show({ text: '检测更新失败' });
+  } finally {
+    f7.preloader.hide();
+  }
+};
+onMounted(() => {
+  loadVersionInfo();
+});
 const openCitySettings = async () => {
     f7.preloader.show();
     try {
@@ -473,7 +528,12 @@ loadThemeSettings();
         <f7-block-title>关于</f7-block-title>
         <f7-list strong inset>
             <f7-list-item @click="$openLink('https://zhihulite.github.io/')" title="关于"
-                after="版本 1.0.0 (Beta)"></f7-list-item>
+              :after="`构造日期 ${buildTime || '开发版'}`"></f7-list-item>
+            <f7-list-item title="检测更新" link="#" @click="checkForUpdate">
+              <template #after>
+                <span v-if="appVersion">版本代号 {{ appVersion }}</span>
+              </template>
+            </f7-list-item>
         </f7-list>
 
         <f7-popup :opened="showCityDialog" class="city-popup" @popup:closed="handleClose" swipe-to-close>

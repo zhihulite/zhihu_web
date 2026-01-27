@@ -5,4 +5,6 @@ module.exports = {
   globIgnores: [],
   ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
   swDest: 'html/service-worker.js',
+  skipWaiting: true,
+  clientsClaim: true,
 };

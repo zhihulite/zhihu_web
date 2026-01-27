@@ -10,7 +10,7 @@ const BASE_DIR = '/zhihu_web/';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.includes('swiper-') } } }), ,
+    vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.includes('swiper-') } } }),
   ],
   root: SRC_DIR,
   base: BASE_DIR,
