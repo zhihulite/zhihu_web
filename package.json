@@ -1,0 +1,34 @@
+{
+  "name": "zhihuliteweb",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Zhihu Lite Web App built with Framework7 Vue",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/generate-version.js && npx workbox generateSW workbox-config.js",
+    "preview": "vite preview",
+    "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "framework7": "^9.0.5",
+    "framework7-icons": "^5.0.5",
+    "framework7-vue": "^9.0.5",
+    "html2canvas-pro": "^2.0.4",
+    "material-icons": "^1.13.14",
+    "swiper": "^12.2.0",
+    "vue": "^3.5.35"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "cpy-cli": "^7.0.0",
+    "vite": "^8.0.16",
+    "workbox-cli": "^7.4.1"
+  },
+  "browserslist": [
+    "IOS >= 15",
+    "Safari >= 15",
+    "last 5 Chrome versions",
+    "last 5 Firefox versions"
+  ]
+}

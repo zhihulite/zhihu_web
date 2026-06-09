@@ -1,0 +1,245 @@
+import unifiedFetch from './request.js';
+import { tokenManager, tryRefreshToken } from '../auth.js';
+import { ensureGuestCredential } from './guest-request.js';
+
+const appVersion = "10.12.0"
+const apiVersion = "101_1_1.0"
+const appBuild = "21210"
+const appBundle = "com.zhihu.android"
+
+// 数盟id 使用模拟器可以无限生成 未登录必须添加上这个
+function getMsid() {
+    return localStorage.getItem('zhihu_msid') || 'DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1';
+}
+
+function getUdid() {
+    return localStorage.getItem('zhihu_udid') || 'DUzQXhjAQDuNnnrXUZuXcZAHclw7VipDNE79RFV6UVhoakFRRHVObm5yWFVadVhjWkFIY2x3N1ZpcERORTc5c2h1';
+}
+
+class ZhihuRequest {
+    constructor({ encryptData, loginData, zsts = {}, defaultHeaders = {} }) {
+        if (typeof encryptData !== 'function') {
+            throw new Error('必须提供 encryptData 加密函数');
+        }
+
+        this.encryptData = encryptData.bind(this);
+
+        const x_app_za = `OS=Android&Release=15&Model=Pixel&VersionName=10.12.0&VersionCode=${appBuild}&Product=com.zhihu.android&Installer=Google+Play&DeviceType=AndroidPhone`;
+        this.appSpecificHeaders = {
+            "x-api-version": "3.0.93",
+            "x-app-version": appVersion,
+            "x-app-za": x_app_za,
+            "x-app-bundleid": appBundle,
+            "x-app-flavor": "play",
+            "x-app-build": "release",
+        };
+
+        this.updateLoginData(loginData, zsts, defaultHeaders)
+
+    }
+
+    updateLoginData(loginData, zsts = {}, defaultHeaders = {}) {
+        console.log('UpdateLoginData:', loginData);
+
+        loginData = loginData.guest || loginData;
+        this.accessToken = "Bearer " + loginData.access_token;
+        if (loginData.udid) {
+            this.cookie["d_c0"] = loginData.udid;
+        }
+        this.cookie = Object.entries(loginData.cookie || {})
+            .filter(([_, v]) => v)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('; ');
+
+        if (Array.isArray(zsts) && zsts.length > 0) {
+            const [zst82, zst81] = zsts;
+            this.zst81 = zst81;
+            this.zst82 = zst82;
+        }
+
+        const user_agent = `${appBundle}/Futureve/${appVersion} Mozilla/5.0 (Linux; Android; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36`
+        this.commonDefaultHeaders = {
+            "User-Agent": user_agent,
+            "x-Zse-93": apiVersion,
+            ...(this.cookie && { "Cookie": this.cookie }),
+            ...(this.accessToken && { "Authorization": this.accessToken }),
+            ...(getMsid() && { "x-ms-id": getMsid() }),
+            ...(getUdid() && { "x-udid": getUdid() }),
+            ...(this.zst81 && { "X-ZST-81": this.zst81 }),
+            ...(this.zst82 && { "X-ZST-82": this.zst82 }),
+            ...defaultHeaders,
+        };
+
+        this.defaultHeaders = {
+            ...this.commonDefaultHeaders,
+            ...this.appSpecificHeaders
+        };
+
+        console.log('Login data updated');
+    }
+
+    async request(method, url, data = "", { headers = {}, encryptBody = true, isWWW = false, encryptHead = false } = {}) {
+        method = method.toUpperCase();
+        const isGet = method === 'GET';
+
+        let baseDefaultHeaders = this.defaultHeaders;
+        if (isWWW) {
+            baseDefaultHeaders = this.commonDefaultHeaders;
+        }
+
+        const incomingCookie = headers.Cookie || headers.cookie;
+        const instanceCookie = baseDefaultHeaders.Cookie || "";
+
+        let finalCookie = "";
+        if (instanceCookie || incomingCookie) {
+            const cookieMap = {};
+
+            if (instanceCookie) {
+                instanceCookie.split('; ').forEach(cookie => {
+                    const [name, ...valueParts] = cookie.split('=');
+                    if (name) {
+                        cookieMap[name.trim()] = valueParts.join('=');
+                    }
+                });
+            }
+
+            if (incomingCookie) {
+                incomingCookie.split('; ').forEach(cookie => {
+                    const [name, ...valueParts] = cookie.split('=');
+                    if (name) {
+                        cookieMap[name.trim()] = valueParts.join('=');
+                    }
+                });
+            }
+
+            finalCookie = Object.entries(cookieMap)
+                .map(([name, value]) => `${name}=${value}`)
+                .join('; ');
+        }
+
+
+        const requestHeaders = {
+            ...baseDefaultHeaders,
+            ...headers,
+            ...((isGet || encryptHead || !data) && {
+                "x-Zse-96": `1.0_${this.encryptData(url)}`,
+            }),
+        };
+        delete requestHeaders.Cookie;
+        delete requestHeaders.cookie;
+        requestHeaders.Cookie = finalCookie
+
+        let body = null;
+        if (!isGet && data) {
+            body = encryptBody ? this.encryptData(data, false) : data;
+            if (!requestHeaders["Content-Type"]) requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+        }
+
+        try {
+            const fetchOptions = {
+                headers: requestHeaders,
+            };
+
+            let responseData;
+            switch (method) {
+                case 'GET':
+                    responseData = await unifiedFetch.get(url, fetchOptions);
+                    break;
+                case 'POST':
+                    responseData = await unifiedFetch.post(url, body, fetchOptions);
+                    break;
+                case 'PUT':
+                    responseData = await unifiedFetch.put(url, body, fetchOptions);
+                    break;
+                case 'PATCH':
+                    responseData = await unifiedFetch.patch(url, body, fetchOptions);
+                    break;
+                case 'DELETE':
+                    responseData = await unifiedFetch.delete(url, fetchOptions);
+                    break;
+                default:
+                    throw new Error(`Unsupported method: ${method}`);
+            }
+
+            return responseData;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    get(url, options) { return this.request('GET', url, null, options); }
+    post(url, data, options) { return this.request('POST', url, data, options); }
+    patch(url, data, options) { return this.request('PATCH', url, data, options); }
+    put(url, data, options) { return this.request('PUT', url, data, options); }
+    delete(url, options) { return this.request('DELETE', url, null, options); }
+}
+
+let globalZhihuInstance = null;
+
+import { getLAESInstance } from './laes_utils.js'
+import CryptoJS from 'crypto-js';
+const laes_utils = getLAESInstance();
+export async function initZhihu() {
+    const LAESEncrypt = laes_utils.createEncryptor("541a3a5896fbefd351917c8251328a236a7efbf27d0fad8283ef59ef07aa386dbb2b1fcbba167135d575877ba0205a02f0aac2d31957bc7f028ed5888d4bbe69ed6768efc15ab703dc0f406b301845a0a64cf3c427c82870053bd7ba6721649c3a9aca8c3c31710a6be5ce71e4686842732d9314d6898cc3fdca075db46d1ccf3a7f9b20615f4a303c5235bd02c5cdc791eb123b9d9f7e72e954de3bcbf7d314064a1eced78d13679d040dd4080640d18c37bbde", [102, 48, 53, 53, 49, 56, 53, 54, 97, 97, 53, 55, 53, 102, 97, 97]);
+    function encrypt_data(data, isGetRequest = true) {
+        if (typeof data !== 'string') {
+            throw new Error('data must be a string');
+        }
+
+        // 暂时不想支持www
+        if (data.startsWith("https://www.zhihu.com") || data.startsWith("http://www.zhihu.com")) return data;
+        if (data.startsWith("https://lens.zhihu.com") || data.startsWith("http://lens.zhihu.com")) return data;
+
+        if (isGetRequest) {
+            const apiPrefix = 'https://api.zhihu.com';
+            if (data.startsWith("http://api.zhihu.com")) {
+                data = data.replace("http://", "https://");
+            }
+            if (!data.startsWith(apiPrefix)) {
+                throw new Error(`URL must start with ${apiPrefix}`);
+            }
+            const apiPath = data.slice(apiPrefix.length)
+            data = `${apiVersion}+${apiPath}+${appVersion}+${this.accessToken}+${getUdid()}`
+            data = CryptoJS.MD5(CryptoJS.enc.Utf8.parse(data)).toString(CryptoJS.enc.Hex);
+        }
+
+        return LAESEncrypt(data);
+    }
+
+    let loginData = null;
+    let zsts = null;
+    const isLogin = tokenManager.isLogin();
+    if (isLogin) {
+        await tryRefreshToken();
+        loginData = tokenManager.getLoginData();
+    }
+
+    // 如果没有提供登录数据，使用默认游客账号
+    if (!loginData) {
+        loginData = await ensureGuestCredential();
+    }
+
+    zsts = JSON.parse(localStorage.getItem('zhihu_zsts'));
+    globalZhihuInstance = new ZhihuRequest({
+        encryptData: encrypt_data,
+        loginData: loginData,
+        zsts: zsts
+    });
+
+
+    console.log('ZhihuRequest 已初始化');
+    return globalZhihuInstance;
+}
+
+export function updateZhihuLoginData(loginData, zsts, defaultHeaders) {
+    if (!globalZhihuInstance) {
+        console.warn('ZhihuRequest 尚未初始化，请先调用 initZhihu');
+        return null;
+    }
+    globalZhihuInstance.updateLoginData(loginData, zsts, defaultHeaders);
+    return globalZhihuInstance;
+}
+
+export function getZhihuInstance() {
+    return globalZhihuInstance;
+}
