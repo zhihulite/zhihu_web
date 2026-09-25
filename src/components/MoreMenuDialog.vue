@@ -1,5 +1,6 @@
 <script setup>
 import { f7 } from 'framework7-vue';
+import { openLink } from '@/core/navigation.js';
 
 const props = defineProps({
     modelValue: Boolean,
@@ -20,7 +21,7 @@ const navigate = (path) => {
 };
 
 const openExternal = (url) => {
-    $openLink(url);
+    openLink(url);
     close();
 };
 </script>
@@ -35,7 +36,13 @@ const openExternal = (url) => {
                 </template>
                 通知
             </f7-actions-button>
-            <f7-actions-button @click="navigate('/messages')">
+            <f7-actions-button @click="navigate('/local')">
+                <template #media>
+                    <f7-icon ios="f7:archivebox" md="material:archive" size="20" />
+                </template>
+                本地内容
+            </f7-actions-button>
+            <f7-actions-button @click="openExternal('https://www.zhihu.com/messages')">
                 <template #media>
                     <f7-icon ios="f7:chat_bubble" md="material:chat_bubble" size="20" />
                 </template>
@@ -58,6 +65,12 @@ const openExternal = (url) => {
                     <f7-icon ios="f7:layers" md="material:layers" size="20" />
                 </template>
                 专题
+            </f7-actions-button>
+            <f7-actions-button @click="openExternal('https://www.zhihu.com')">
+                <template #media>
+                    <f7-icon ios="f7:square_pencil" md="material:edit" size="20" />
+                </template>
+                提问
             </f7-actions-button>
         </f7-actions-group>
         <f7-actions-group>

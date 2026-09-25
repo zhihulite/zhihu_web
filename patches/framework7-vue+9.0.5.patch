@@ -1,0 +1,196 @@
+diff --git a/node_modules/framework7-vue/components/chip.js b/node_modules/framework7-vue/components/chip.js
+index a957036..a90a6af 100644
+--- a/node_modules/framework7-vue/components/chip.js
++++ b/node_modules/framework7-vue/components/chip.js
+@@ -51,6 +51,7 @@ export default {
+   }) {
+     const elRef = ref(null);
+     const onDeleteClick = event => {
++      event.stopPropagation();
+       emit('delete', event);
+     };
+     useTooltip(elRef, props);
+diff --git a/node_modules/framework7-vue/components/page-content.js b/node_modules/framework7-vue/components/page-content.js
+index 8739df8..26000a6 100644
+--- a/node_modules/framework7-vue/components/page-content.js
++++ b/node_modules/framework7-vue/components/page-content.js
+@@ -65,7 +65,7 @@ export default {
+     loginScreen: Boolean,
+     ...colorProps
+   },
+-  emits: ['ptr:pullstart', 'ptr:pullmove', 'ptr:pullend', 'ptr:refresh', 'ptr:done', 'infinite', 'ptrPullStart', 'ptrPullMove', 'ptrPullEnd', 'ptrRefresh', 'ptrDone', 'tab:hide', 'tab:show'],
++  emits: ['ptr:pullstart', 'ptr:pullmove', 'ptr:pullend', 'ptr:refresh', 'ptr:done', 'infinite', 'tab:hide', 'tab:show'],
+   setup(props, {
+     emit
+   }) {
+@@ -73,27 +73,22 @@ export default {
+     const onPtrPullStart = el => {
+       if (elRef.value !== el) return;
+       emit('ptr:pullstart');
+-      emit('ptrPullStart');
+     };
+     const onPtrPullMove = el => {
+       if (elRef.value !== el) return;
+       emit('ptr:pullmove');
+-      emit('ptrPullMove');
+     };
+     const onPtrPullEnd = el => {
+       if (elRef.value !== el) return;
+       emit('ptr:pullend');
+-      emit('ptrPullEnd');
+     };
+     const onPtrRefresh = (el, done) => {
+       if (elRef.value !== el) return;
+       emit('ptr:refresh', done);
+-      emit('ptrRefresh', done);
+     };
+     const onPtrDone = el => {
+       if (elRef.value !== el) return;
+       emit('ptr:done');
+-      emit('ptrDone');
+     };
+     const onInfinite = el => {
+       if (elRef.value !== el) return;
+@@ -108,9 +103,15 @@ export default {
+           f7.on('ptrPullEnd', onPtrPullEnd);
+           f7.on('ptrRefresh', onPtrRefresh);
+           f7.on('ptrDone', onPtrDone);
++          // PTR only initializes in pageInit callback.
++          // If page-content is added after page initialization, check if PTR exists.
++          // If not, create it manually.
++          f7.ptr.create(elRef.value);
+         }
+         if (props.infinite) {
+           f7.on('infinite', onInfinite);
++          // Same logic applies to infinite scroll
++          f7.infiniteScroll.create(elRef.value);
+         }
+       });
+     });
+diff --git a/node_modules/framework7-vue/components/page.js b/node_modules/framework7-vue/components/page.js
+index f6ad822..72f8a88 100644
+--- a/node_modules/framework7-vue/components/page.js
++++ b/node_modules/framework7-vue/components/page.js
+@@ -318,12 +318,12 @@ export default {
+         hideToolbarOnScroll: props.hideToolbarOnScroll,
+         messagesContent: props.messagesContent || hasMessages,
+         loginScreen: props.loginScreen,
+-        onPtrPullStart,
+-        onPtrPullMove,
+-        onPtrPullEnd,
+-        onPtrRefresh,
+-        onPtrDone,
+-        onInfinite
++        "onPtr:pullstart": onPtrPullStart,
++        "onPtr:pullmove": onPtrPullMove,
++        "onPtr:pullend": onPtrPullEnd,
++        "onPtr:refresh": onPtrRefresh,
++        "onPtr:done": onPtrDone,
++        "onInfinite": onInfinite
+       }, () => [slotsStatic && slotsStatic(), staticList])]);
+     };
+   }
+diff --git a/node_modules/framework7-vue/components/tabs.js b/node_modules/framework7-vue/components/tabs.js
+index 1f35023..18c5217 100644
+--- a/node_modules/framework7-vue/components/tabs.js
++++ b/node_modules/framework7-vue/components/tabs.js
+@@ -21,6 +21,7 @@ function render(_ctx, _cache) {
+ import { computed, ref, onMounted, provide } from 'vue';
+ import { classNames } from '../shared/utils.js';
+ import { colorClasses, colorProps } from '../shared/mixins.js';
++import { f7ready, f7 } from '../shared/f7.js';
+ export default {
+   name: 'f7-tabs',
+   render,
+@@ -37,6 +38,13 @@ export default {
+   setup(props) {
+     const elRef = ref(null);
+     onMounted(() => {
++      if (props.swipeable) {
++        f7ready(() => {
++          // It only initializes in pageInit callback
++          // We may need to manually call init() to update the instance
++          f7.swiper.init(elRef.value);
++        });
++      }
+       if (!props.swipeable || !props.swiperParams) return;
+       if (!elRef.value) return;
+       Object.assign(elRef.value, props.swiperParams);
+diff --git a/node_modules/framework7-vue/components/view.js b/node_modules/framework7-vue/components/view.js
+index 5f47a9a..cf26409 100644
+--- a/node_modules/framework7-vue/components/view.js
++++ b/node_modules/framework7-vue/components/view.js
+@@ -260,6 +260,8 @@ export default {
+                 f7View.init(elRef.value);
+                 if (initialPage) {
+                   initialPage.el = f7View.router.currentPageEl;
++                  const routeId = pages?.value[0]?.props?.routeId;
++                  if (routeId) initialPage.el.routeId = routeId;
+                   if (initialRoute && initialRoute.route && initialRoute.route.keepAlive) {
+                     initialRoute.route.keepAliveData = {
+                       pageEl: initialPage.el
+@@ -272,6 +274,8 @@ export default {
+             f7View.init(elRef.value);
+             if (initialPage) {
+               initialPage.el = f7View.router.currentPageEl;
++              const routeId = pages?.value[0]?.props?.routeId;
++              if (routeId) initialPage.el.routeId = routeId;
+               if (initialRoute && initialRoute.route && initialRoute.route.keepAlive) {
+                 initialRoute.route.keepAliveData = {
+                   pageEl: initialPage.el
+diff --git a/node_modules/framework7-vue/framework7-vue.js b/node_modules/framework7-vue/framework7-vue.js
+index 7b6958a..7e42008 100644
+--- a/node_modules/framework7-vue/framework7-vue.js
++++ b/node_modules/framework7-vue/framework7-vue.js
+@@ -7,7 +7,7 @@
+  *
+  * Released under the MIT License
+  *
+- * Released on: May 27, 2026
++ * Released on: June 2, 2026
+  */
+ import Framework7Vue from './shared/plugin.js';
+ import { f7, f7ready, theme } from './shared/f7.js';
+diff --git a/node_modules/framework7-vue/shared/components-router.js b/node_modules/framework7-vue/shared/components-router.js
+index d4c61df..b0850f9 100644
+--- a/node_modules/framework7-vue/shared/components-router.js
++++ b/node_modules/framework7-vue/shared/components-router.js
+@@ -50,6 +50,7 @@ export default {
+       };
+       let resolved;
+       const childrenBefore = getChildrenArray(el);
++      const routeId = pageData.props.routeId;
+       function onDidUpdate(componentRouterData) {
+         if (componentRouterData !== viewRouter || resolved) return;
+         const childrenAfter = getChildrenArray(el);
+@@ -57,6 +58,7 @@ export default {
+         f7events.off('viewRouterDidUpdate', onDidUpdate);
+         const pageEl = el.children[el.children.length - 1];
+         pageData.el = pageEl;
++        if (routeId) pageEl.routeId = routeId;
+         resolve(pageEl);
+         resolved = true;
+       }
+diff --git a/node_modules/framework7-vue/shared/get-router-initial-component.js b/node_modules/framework7-vue/shared/get-router-initial-component.js
+index 2b0867e..d4373c7 100644
+--- a/node_modules/framework7-vue/shared/get-router-initial-component.js
++++ b/node_modules/framework7-vue/shared/get-router-initial-component.js
+@@ -5,9 +5,15 @@ export const getRouterInitialComponent = (router, initialComponent) => {
+     initialUrl
+   } = router.getInitialUrl();
+   const initialRoute = router.findMatchingRoute(initialUrl);
+-  let routeProps = {};
+-  if (initialRoute && initialRoute.route && initialRoute.route.options) {
+-    routeProps = initialRoute.route.options.props;
++  let routeProps = router.propsHistory[router.propsHistory.length - 1];
++  // Store route props first, if not present, fallback to route options
++  if (!routeProps) {
++    if (initialRoute && initialRoute.route && initialRoute.route.options) {
++      routeProps = {
++        ...initialRoute.route.options.props
++      };
++      router.propsHistory.push(routeProps);
++    }
+   }
+   const isMasterRoute = route => {
+     if (route.master === true) return true;

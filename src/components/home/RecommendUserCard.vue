@@ -1,6 +1,6 @@
 <script setup>
 import { f7 } from 'framework7-vue'
-import $http from '../../api/http.js'
+import $http from '@/services/http.js'
 
 const props = defineProps(['item'])
 const emit = defineEmits(['remove', 'uninterest', 'click'])
@@ -68,7 +68,7 @@ const handleCardClick = () => {
     align-items: center;
     gap: 12px;
     overflow: hidden;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--app-divider-color);
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
@@ -79,7 +79,7 @@ const handleCardClick = () => {
     top: 12px;
     right: 12px;
     cursor: pointer;
-    color: #999;
+    color: var(--app-sub-text);
     z-index: 10;
 }
 
@@ -110,7 +110,7 @@ const handleCardClick = () => {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: #f0f0f0;
+    background-color: var(--app-placeholder-bg);
     border-radius: 50%;
     z-index: 0;
 }
@@ -123,12 +123,12 @@ const handleCardClick = () => {
     font-size: 18px;
     font-weight: 700;
     margin: 0;
-    color: #333;
+    color: var(--f7-text-color);
 }
 
 .recommend-user-headline {
     font-size: 14px;
-    color: #666;
+    color: var(--app-sub-text);
     margin: 4px 0 0;
     line-height: 1.4;
 }
@@ -138,7 +138,7 @@ const handleCardClick = () => {
     align-items: center;
     gap: 6px;
     font-size: 14px;
-    color: #999;
+    color: var(--app-sub-text);
     margin-top: 8px;
 }
 </style>

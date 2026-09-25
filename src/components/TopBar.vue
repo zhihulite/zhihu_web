@@ -1,14 +1,12 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { f7 } from 'framework7-vue'
-import LoginDialog from './LoginDialog.vue'
+import { onMounted } from 'vue'
+import { requestLogin } from '@/core/login-dialog.js'
+import { toggleSidePanel } from '@/core/layout.js'
 import { useUser } from '@/composables/userManager'
 
 const props = defineProps({
     f7router: Object
 })
-
-const showLogin = ref(false)
 
 const navigateToSearch = () => {
     if (props.f7router) props.f7router.navigate('/search')
@@ -16,7 +14,7 @@ const navigateToSearch = () => {
 
 const handleAvatarClick = () => {
     if (!isLoggedIn.value) {
-        showLogin.value = true
+        requestLogin()
     } else if (props.f7router && currentUser.value?.id) {
         props.f7router.navigate(`/user/${currentUser.value.id}`)
     }
@@ -26,31 +24,18 @@ const handleAvatarClick = () => {
 const {
     currentUser,
     isLoggedIn,
-    isRefreshing,
     refreshUser,
-    onUserUpdate
 } = useUser()
 
-// 订阅用户数据更新
-let unsubscribe = null
 onMounted(() => {
     refreshUser()
-    // 添加用户数据更新订阅
-    unsubscribe = onUserUpdate((updatedUserData) => {
-        console.log('User data updated in TopBar:', updatedUserData)
-    })
 })
 
-onUnmounted(() => {
-    // 组件卸载时取消订阅，防止内存泄漏
-    if (unsubscribe) {
-        unsubscribe()
-    }
-})
-
-const onLoginSuccess = () => {
-    showLogin.value = false
-    refreshUser()
+// 双击标题回到顶部：滚当前激活 tab 的内容容器
+const scrollToTop = () => {
+    const el = document.querySelector('.page-name-home .tab-active .page-content')
+        || document.querySelector('.page-name-home .page-content')
+    el?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 </script>
@@ -58,12 +43,12 @@ const onLoginSuccess = () => {
 <template>
     <f7-navbar>
         <f7-nav-left>
-            <f7-link icon-only panel-toggle="left">
+            <f7-link icon-only @click="toggleSidePanel">
                 <f7-icon ios="f7:menu" md="material:menu" />
             </f7-link>
         </f7-nav-left>
 
-        <f7-nav-title>
+        <f7-nav-title @dblclick="scrollToTop">
             Zyphron
         </f7-nav-title>
 
@@ -78,8 +63,6 @@ const onLoginSuccess = () => {
             </f7-link>
         </f7-nav-right>
     </f7-navbar>
-
-    <LoginDialog v-model="showLogin" @login-success="onLoginSuccess" />
 </template>
 
 <style scoped>
@@ -96,14 +79,8 @@ const onLoginSuccess = () => {
 }
 
 @media (max-width: 768px) {
-    .desktop-only {
-        display: none;
-    }
 }
 
 @media (max-width: 640px) {
-    .tablet-only {
-        display: none;
-    }
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import RecommendUserCard from './RecommendUserCard.vue'
+import RecommendUserCard from '@/components/home/RecommendUserCard.vue'
 
 const props = defineProps(['item'])
 const emit = defineEmits(['click', 'remove'])
@@ -33,8 +33,8 @@ const handleUninterest = (userId) => {
             <div class="recommend-user-grid">
                 <!-- 遍历卡片数据渲染推荐用户卡片 -->
                 <RecommendUserCard 
-                    v-for="(card, index) in cardData" 
-                    :key="index"
+                    v-for="card in cardData" 
+                    :key="card.actor?.id"
                     :item="card"
                     @uninterest="handleUninterest"
                     @click="(item) => $emit('click', item)"
@@ -64,7 +64,7 @@ const handleUninterest = (userId) => {
     font-size: 16px;
     font-weight: 700;
     margin: 0;
-    color: #333;
+    color: var(--f7-text-color);
 }
 
 .recommend-user-card-list-content {

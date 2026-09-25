@@ -1,13 +1,30 @@
 <script setup>
+import MetricRow from '@/components/MetricRow.vue';
+import { ICON } from '@/core/icons.js';
+
 const props = defineProps({
     item: Object,
+    dismissible: Boolean,
 })
-defineEmits(['click'])
+const emit = defineEmits(['click', 'dislike'])
 
+// 长按走 Framework7 原生 taphold（app.touch.tapHold），右键走 contextmenu；
+// tapHoldPreventClicks 默认开启，长按后不会再触发 click
+const onContextMenu = (e) => {
+    if (!props.dismissible) return
+    e.preventDefault()
+    emit('dislike', props.item)
+}
+
+const onTaphold = () => {
+    if (!props.dismissible) return
+    emit('dislike', props.item)
+}
 </script>
 
 <template>
-    <f7-card class="feed-card" :class="[$attrs.class]" @click="$emit('click', item)">
+    <f7-card class="feed-card" :class="[$attrs.class, dismissible ? 'dismissible' : '']" @click="$emit('click', item)"
+        @taphold="onTaphold" @contextmenu="onContextMenu">
         <f7-card-content>
             <div v-if="item.image" class="card-image-wrap">
                 <img :src="item.image" class="content-img" />
@@ -27,16 +44,10 @@ defineEmits(['click'])
             <div v-if="item.footer" class="card-footer-text">
                 {{ item.footer }}
             </div>
-            <div v-else class="card-footer-metrics">
-                <span class="metric-item">
-                    <f7-icon ios="f7:hand_thumbsup" md="material:thumb_up" size="14" />
-                    {{ item.metrics?.likes || 0 }}
-                </span>
-                <span class="metric-item">
-                    <f7-icon ios="f7:bubble_left" md="material:chat_bubble" size="14" />
-                    {{ item.metrics?.comments || 0 }}
-                </span>
-            </div>
+            <MetricRow v-else :items="[
+                { icon: ICON.like, value: item.metrics?.likes },
+                { icon: ICON.comment, value: item.metrics?.comments },
+            ]" />
         </f7-card-footer>
     </f7-card>
 </template>
@@ -44,24 +55,17 @@ defineEmits(['click'])
 <style scoped>
 .feed-card {
     cursor: pointer;
-    margin: 8px 16px !important;
+    margin: var(--app-card-gap, 8px) var(--app-page-margin, 16px) !important;
 }
 
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.feed-card :deep(.card-content) {
+    padding: var(--app-card-padding, 16px);
 }
 
-.mini-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-}
-
-.author-name {
-    font-size: 14px;
-    font-weight: 500;
+.feed-card.dismissible {
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .card-image-wrap {
@@ -79,13 +83,13 @@ defineEmits(['click'])
     font-size: 17px;
     font-weight: 700;
     margin-bottom: 8px;
-    color: #1a1a1a;
+    color: var(--f7-text-color);
 }
 
 .author-excerpt-line,
 .bottom-text-line {
     font-size: 14px;
-    color: #444;
+    color: var(--f7-text-color);
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -95,7 +99,7 @@ defineEmits(['click'])
 }
 
 .bottom-text-line {
-    color: #888;
+    color: var(--app-sub-text);
 }
 
 .title :deep(p),
@@ -113,19 +117,6 @@ defineEmits(['click'])
 
 .author-label {
     font-weight: 500;
-    color: #666;
-}
-
-.card-footer-metrics {
-    display: flex;
-    gap: 16px;
-    font-size: 12px;
-    color: #999;
-}
-
-.metric-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    color: var(--app-sub-text);
 }
 </style>

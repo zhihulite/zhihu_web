@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch, reactive } from 'vue';
+import { ref, watch } from 'vue';
 import { f7 } from 'framework7-vue';
-import $http from '../api/http.js';
+import $http from '@/services/http.js';
+import CollectionEditSheet from '@/components/CollectionEditSheet.vue';
 
 const props = defineProps({
     modelValue: Boolean,
@@ -20,47 +21,35 @@ const emit = defineEmits(['update:modelValue', 'success']);
 const collections = ref([]);
 const isLoading = ref(false);
 const isSaving = ref(false);
-const lastResult = ref(null);
 
-const showCreatePopup = ref(false);
-const createData = reactive({
-    title: '',
-    isPublic: true,
-    isSubmitting: false
-});
+const showEditSheet = ref(false);
+
+// 每次打开算一个世代：换了内容就作废上一轮的分页循环，
+    // 否则旧列表会接着往清空后的数组里灌，确认时把上一个对象的收藏夹套到新对象上
+let fetchToken = 0;
 
 const fetchCollections = async () => {
-    if (isLoading.value) return;
+    const token = ++fetchToken;
     isLoading.value = true;
 
     try {
-        let res;
-        if (!lastResult.value) {
-            const url = `https://api.zhihu.com/collections/contents/${props.contentType}/${props.contentId}?limit=20`;
-            res = await $http.get(url);
-        } else {
-            res = await lastResult.value.next();
-        }
-        
-        const rawList = res.data || [];
-
-        lastResult.value = res;
-        const formatted = rawList.map(item => ({
-            id: item.id,
-            title: item.title,
-            selected: !!item.is_favorited,
-            originalSelected: !!item.is_favorited
-        }));
-
-        collections.value.push(...formatted);
-
-        if (!res.paging?.is_end) {
-            await fetchCollections();
+        let res = await $http.get(
+            `https://api.zhihu.com/collections/contents/${props.contentType}/${props.contentId}?limit=20`);
+        while (res && token === fetchToken) {
+            (res.data || []).forEach((item) => collections.value.push({
+                id: item.id,
+                title: item.title,
+                selected: !!item.is_favorited,
+                originalSelected: !!item.is_favorited,
+            }));
+            if (res.paging?.is_end) break;
+            res = await res.next();
         }
     } catch (e) {
         console.error('Failed to fetch collections:', e);
+        f7.toast.show({ text: e.message || '收藏夹列表加载失败', position: 'center' });
     } finally {
-        isLoading.value = false;
+        if (token === fetchToken) isLoading.value = false;
     }
 };
 
@@ -98,54 +87,25 @@ const handleConfirm = async () => {
         emit('update:modelValue', false);
     } catch (e) {
         console.error('Failed to update collections:', e);
+        f7.toast.show({ text: e.message || '收藏失败', position: 'center' });
     } finally {
         isSaving.value = false;
     }
 };
 
 const createNewCollection = () => {
-    createData.title = '';
-    createData.isPublic = true;
-    showCreatePopup.value = true;
+    showEditSheet.value = true;
 };
 
-const doCreate = async () => {
-    if (!createData.title.trim()) {
-        f7.dialog.alert('请输入标题');
-        return;
-    }
-    createData.isSubmitting = true;
-    try {
-        const url = 'https://api.zhihu.com/collections';
-        const params = new URLSearchParams();
-        params.append('title', createData.title);
-        params.append('description', '');
-        params.append('is_public', String(createData.isPublic));
-        params.append('is_default', 'false');
-
-        const result = await $http.post(url, params.toString(), { encryptBody: false, encryptHead: true });
-
-        if (result && result.id) {
-            f7.toast.show({ text: '创建成功' });
-            collections.value.unshift({
-                id: String(result.id),
-                title: createData.title,
-                selected: true,
-                originalSelected: false
-            });
-            showCreatePopup.value = false;
-        }
-    } catch (e) {
-        console.error('Failed to create collection:', e);
-    } finally {
-        createData.isSubmitting = false;
-    }
-}
+// 新建成功后置顶并勾选，等待用户确认统一提交
+const onCreated = ({ id, title }) => {
+    if (!id) return;
+    collections.value.unshift({ id, title, selected: true, originalSelected: false });
+};
 
 watch(() => props.modelValue, (newVal) => {
     if (newVal) {
         collections.value = [];
-        lastResult.value = null;
         fetchCollections();
     }
 });
@@ -156,12 +116,12 @@ const handleClose = () => {
 </script>
 
 <template>
-    <f7-sheet class="collection-sheet" :opened="modelValue" @sheet:closed="handleClose"
-        style="height: 70vh; border-radius: 24px 24px 0 0;" swipe-to-close backdrop>
-        <div class="sheet-modal-inner" style="height: 100%; display: flex; flex-direction: column;">
-            <div class="header">
+    <f7-sheet class="sheet-bottom" :opened="modelValue" @sheet:closed="handleClose"
+        style="height: 70vh;" swipe-to-close backdrop>
+        <div class="sheet-modal-inner">
+            <div class="sheet-header">
                 <span class="title">选择收藏夹</span>
-                <div class="right">
+                <div class="sheet-header-actions">
                     <f7-link @click="createNewCollection">新建收藏夹</f7-link>
                     <f7-link icon-only @click="handleClose" class="margin-left">
                         <f7-icon ios="f7:multiply" md="material:close" />
@@ -169,7 +129,7 @@ const handleClose = () => {
                 </div>
             </div>
 
-            <div class="page-content" style="flex: 1; overflow-y: auto;">
+            <div class="page-content sheet-scroll-body">
                 <div v-if="isLoading && collections.length === 0" class="padding text-align-center">
                     <f7-preloader /> 正在加载...
                 </div>
@@ -181,71 +141,12 @@ const handleClose = () => {
             </div>
 
             <div class="footer padding" style="display: block;">
-                <f7-button fill large class="confirm-btn" @click="handleConfirm" :loading="isSaving">
+                <f7-button fill large class="sheet-primary-btn" @click="handleConfirm" :loading="isSaving">
                     确认选择
                 </f7-button>
             </div>
         </div>
     </f7-sheet>
 
-    <f7-sheet class="create-collection-sheet" :opened="showCreatePopup" @sheet:closed="showCreatePopup = false"
-        style="height: auto; border-radius: 24px 24px 0 0;" swipe-to-close backdrop>
-        <div class="sheet-modal-inner">
-            <div class="header">
-                <span class="title">新建收藏夹</span>
-                <f7-link @click="showCreatePopup = false">取消</f7-link>
-            </div>
-            <div class="sheet-content padding-bottom">
-                <f7-list no-hairlines-md>
-                    <f7-list-input label="标题" type="text" placeholder="收藏夹名称" clear-button
-                        v-model:value="createData.title" />
-                    <f7-list-item title="公开收藏夹" footer="公开收藏夹可以让其他人看到你收藏的内容">
-                        <template #after>
-                            <f7-toggle v-model:checked="createData.isPublic" />
-                        </template>
-                    </f7-list-item>
-                </f7-list>
-                <div class="padding">
-                    <f7-button fill large class="confirm-btn" @click="doCreate" :loading="createData.isSubmitting">
-                        提交
-                    </f7-button>
-                </div>
-            </div>
-        </div>
-    </f7-sheet>
+    <CollectionEditSheet v-model="showEditSheet" @saved="onCreated" />
 </template>
-
-<style scoped>
-.collection-sheet,
-.create-collection-sheet {
-    max-width: 600px;
-    left: 0 !important;
-    right: 0 !important;
-    margin: 0 auto !important;
-    width: 100%;
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 24px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.title {
-    font-size: 1.1em;
-    font-weight: bold;
-}
-
-.header .right {
-    display: flex;
-    align-items: center;
-}
-
-.confirm-btn {
-    width: 100%;
-    margin: 0 auto;
-    border-radius: 12px;
-}
-</style>

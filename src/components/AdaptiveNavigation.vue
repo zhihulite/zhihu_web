@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { f7, f7ready } from 'framework7-vue';
-import { f7Page, f7Icon } from 'framework7-vue';
+import { openLink } from '@/core/navigation.js';
 
 const props = defineProps({
     onLogout: {
@@ -16,13 +16,17 @@ const props = defineProps({
 
 const currentPath = ref('/');
 
+// 侧栏标识用的图标：与双栏空栏占位同一份资源，按部署基址取
+const brandIcon = `${import.meta.env.BASE_URL}icons/192x192.png`;
+
 const NAV_ITEMS = [
     { id: 'home', label: '主页', path: '/', icon: { ios: 'f7:house_fill', md: 'material:home' } },
     { id: 'following', label: '关注', path: '/following', icon: { ios: 'f7:person_2_fill', md: 'material:people' } },
     { id: 'collections', label: '收藏', path: '/collections', icon: { ios: 'f7:bookmark_fill', md: 'material:bookmark' } },
     { id: 'daily', label: '日报', path: '/daily', icon: { ios: 'f7:doc_plaintext', md: 'material:article' } },
     { id: 'history', label: '历史', path: '/history', icon: { ios: 'f7:clock_fill', md: 'material:history' } },
-    { id: 'settings', label: '设置', path: '/settings', icon: { ios: 'f7:gear_fill', md: 'material:settings' } }
+    { id: 'local', label: '本地', path: '/local', icon: { ios: 'f7:archivebox', md: 'material:archive' } },
+    { id: 'settings', label: '设置', path: '/settings', icon: { ios: 'f7:gear_alt_fill', md: 'material:settings' } }
 ];
 
 const handleNavigate = (item) => {
@@ -31,9 +35,9 @@ const handleNavigate = (item) => {
     }
 
     if (item.external) {
-        $openLink(item.external);
+        openLink(item.external);
     } else if (item.path) {
-        f7.view.main.router.navigate(item.path);
+        f7.views.main.router.navigate(item.path);
     }
 };
 
@@ -55,23 +59,32 @@ const updateCurrentPath = (route) => {
     currentPath.value = route.path || route.url || '/';
 };
 
+let mainRouter = null;
+
 onMounted(() => {
     f7ready(() => {
-        window.testf7 = f7
-        if (f7.view.main && f7.view.main.router) {
-            currentPath.value = f7.view.main.router.currentRoute?.path || '/';
-
-            f7.view.main.router.on('routeChange', (newRoute) => {
-                updateCurrentPath(newRoute);
-            });
+        mainRouter = f7.views.main?.router;
+        if (mainRouter) {
+            currentPath.value = mainRouter.currentRoute?.path || '/';
+            mainRouter.on('routeChange', updateCurrentPath);
         }
     });
+});
+
+onUnmounted(() => {
+    mainRouter?.off('routeChange', updateCurrentPath);
 });
 </script>
 
 <template>
     <div class="nav-wrapper">
-        <div class="logo-box" @click="$openLink('https://github.com/zhihulite/zhihu_web')">Z</div>
+        <div class="brand" @click="openLink('https://github.com/zhihulite/zhihu_web')">
+            <img :src="brandIcon" alt="" />
+            <div class="brand-text">
+                <span class="brand-name">Zyphron</span>
+                <span class="brand-sub">知乎网页端</span>
+            </div>
+        </div>
 
         <f7-list menu-list>
             <f7-list-item v-for="item in NAV_ITEMS" :key="item.id" :title="item.label" link
@@ -108,20 +121,38 @@ onMounted(() => {
     box-sizing: border-box;
 }
 
-.logo-box {
-    margin: 0 16px 16px 16px;
-    width: 48px;
-    height: 48px;
-    flex-shrink: 0;
-    background: var(--f7-theme-color);
-    color: white;
-    border-radius: 12px !important;
+.brand {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    gap: 10px;
+    margin: 0 16px 14px;
+    cursor: pointer;
+}
+
+.brand img {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    flex-shrink: 0;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.brand-name {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--f7-text-color);
+}
+
+.brand-sub {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--app-sub-text);
 }
 
 .spacer {

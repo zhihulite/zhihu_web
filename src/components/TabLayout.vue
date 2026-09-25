@@ -1,6 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-
 /* 当 nested=true 时，toolbar 顶到最顶部 */
 /* 当 autoPageContent=false 时（即不自动添加 page-content） 下层自己提供的 page-content 需要取消 padding-top */
 const props = defineProps({
@@ -34,7 +32,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['update:activeId', 'tab:show', 'tabviewinfinite']);
+const emit = defineEmits(['update:activeId', 'tab:show']);
 
 const onTabShow = (tab) => {
     if (props.onChange) {

@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from 'vue'
+import MetricRow from '@/components/MetricRow.vue';
+import { ICON } from '@/core/icons.js';
 
 const props = defineProps(['item'])
 defineEmits(['click'])
@@ -73,14 +75,10 @@ const getRemainingCount = () => {
                             </div>
                             
                             <div slot="footer" class="moment-item-metrics">
-                                <div class="moment-metrics-row-simple">
-                                    <span class="metric">
-                                        <f7-icon :ios="'f7:hand_thumbsup'" :md="'material:thumb_up'" size="14" /> {{ listItem.metrics.likes }}
-                                    </span>
-                                    <span class="metric" v-if="listItem.metrics.comments !== null">
-                                        <f7-icon :ios="'f7:bubble_left'" :md="'material:chat_bubble'" size="14" /> {{ listItem.metrics.comments }}
-                                    </span>
-                                </div>
+                                <MetricRow :items="[
+                                    { icon: ICON.like, value: listItem.metrics.likes },
+                                    { icon: ICON.comment, value: listItem.metrics.comments },
+                                ]" />
                             </div>
                         </div>
                     </div>
@@ -148,7 +146,7 @@ const getRemainingCount = () => {
 
 .moment-action-time {
     font-size: 12px;
-    color: #999;
+    color: var(--app-sub-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -158,7 +156,7 @@ const getRemainingCount = () => {
 
 .moment-list-item {
     cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--app-divider-color);
 }
 
 .moment-list-item:last-child {
@@ -184,7 +182,7 @@ const getRemainingCount = () => {
     font-weight: 700;
     margin: 0;
     line-height: 1.4;
-    color: #333;
+    color: var(--f7-text-color);
 }
 
 .moment-item-excerpt {
@@ -193,7 +191,7 @@ const getRemainingCount = () => {
 
 .moment-excerpt {
     font-size: 14px;
-    color: #666;
+    color: var(--app-sub-text);
     line-height: 1.5;
     margin: 0;
 }
@@ -202,15 +200,9 @@ const getRemainingCount = () => {
     margin-top: 8px;
 }
 
-.moment-metrics-row-simple {
-    display: flex;
-    gap: 16px;
-    margin: 0;
-}
-
 .metric {
     font-size: 12px;
-    color: #999;
+    color: var(--app-sub-text);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -218,7 +210,7 @@ const getRemainingCount = () => {
 
 /* 展开/折叠按钮样式 */
 .moment-expand-footer {
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--app-divider-color);
     cursor: pointer;
     text-align: center;
 }

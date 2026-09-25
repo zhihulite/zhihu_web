@@ -6,104 +6,57 @@
 
 > **项目状态**：目前为 Demo 阶段，欢迎有兴趣的开发者参与共建！
 
-[点击查看参与方式及后续计划](https://github.com/zhihulite/zhihu_web/blob/main/join.md)
+[参与方式与开发规范见 AGENTS.md](https://github.com/zhihulite/zhihu_web/blob/main/AGENTS.md)
 
 ---
 
-## 使用修改版 Framework7
-
-本项目使用**修改版 Framework7**（修复了原版已知但官方尚未修复的 bug）
-
-- 修改版仓库地址：https://github.com/huajiqaq/framework7/tree/mymaster
-
----
-
-## 替换 Framework7 依赖教程
-
-### 步骤 1：安装 ZhiHu_Web 项目
+## 安装与运行
 
 ```bash
 git clone https://github.com/zhihulite/zhihu_web.git
 cd zhihu_web
-npm install
+npm install          # postinstall 会自动应用 patches/ 下的 Framework7 补丁
+npm run dev -- --host   # 开发服务器（支持局域网访问）
+npm run build        # 生产构建，产物在 html/
 ```
 
-> 为了方便，先安装官方模块，后续再进行替换。
-
-### 步骤 2：删除 Vite 缓存
-
-```bash
-rm -rf node_modules/.vite
-```
-
-### 步骤 3：下载并构建修改版 Framework7
-
-```bash
-git clone https://github.com/huajiqaq/framework7.git
-cd framework7
-git checkout mymaster
-npm install
-```
-
-### 步骤 4：构建 Core 和 Vue 包
-
-```bash
-npm run build-core:prod   # 构建 Core 包
-npm run build-vue:prod    # 构建 Vue 包
-```
-
-构建完成后，在根目录找到 `packages` 目录。
-
-### 步骤 5：替换项目依赖
-
-- 将 `packages/core` 文件夹替换到 `zhihu_web/node_modules/framework7`
-- 将 `packages/vue` 文件夹替换到 `zhihu_web/node_modules/framework7-vue`
-
-### 步骤 6：重新构建并运行
-
-```bash
-cd ../zhihu_web
-npm run build   # 构造静态资源（生成 dist 目录）
-npm run dev -- --host     # 启动开发服务器（支持局域网访问）
-```
-
-> **两步是独立的**：`npm run build` 用于生产部署，`npm run dev` 用于日常开发调试。开发时只需执行 `npm run dev -- --host`，无需先 build。
+`npm run dev` 与 `npm run build` 相互独立：开发只需 `dev`，部署用 `build`。
 
 ---
 
-## 更新项目依赖
+## Framework7 补丁
 
-当需要升级项目依赖到最新版本时，推荐使用 `npm-check-updates`（ncu）工具：
+本项目对官方 Framework7 9.0.5 做了少量修改（自动 `routeId`、滚动恢复、若干组件初始化守卫等），
+以 [patch-package](https://github.com/ds300/patch-package) 的补丁形式维护，不再手工替换 `node_modules`。
 
-### 安装 ncu
+- 补丁文件：`patches/framework7+9.0.5.patch`、`patches/framework7-vue+9.0.5.patch`
+- `npm install` 后由 `postinstall` 钩子自动应用，无需额外操作
 
-```bash
-npm install -g npm-check-updates
-```
+补丁改的是 `node_modules` 里的文件，而 Vite 会缓存依赖预构建的结果，所以**换过补丁或
+重新 `npm install` 后要删掉 `node_modules/.vite` 再启动**，否则跑起来仍是打补丁前的 Framework7
+（典型症状：自动 `routeId` 失效、页面状态不缓存）。`npm run dev -- --force` 等效于清缓存后启动。
 
-### 检查可更新的依赖
+### 修改补丁
 
-```bash
-ncu
-```
-
-### 交互式选择更新
+改动 `node_modules/framework7` 或 `node_modules/framework7-vue` 后重新生成补丁：
 
 ```bash
-ncu -i
+npm run patch:make
 ```
 
-### 直接更新 package.json 到最新版本
+脚本先清掉 `patches/` 里旧的 framework7 补丁，再按排除规则各生成一份；文件名里的版本号取自
+`node_modules` 里实际安装的版本，所以**升级框架后跑一次这条命令**即可，不用记参数、也不用手工改文件名。
+排除规则（剔除声明文件、样式、source map 等非运行时产物，保持补丁最小）写在 `scripts/make-patches.mjs`。
 
-```bash
-ncu -u
-npm install
-```
+### 升级 Framework7
 
-> **注意**：更新依赖后，如果涉及 Framework7 相关包，需要重新执行上述替换教程，确保使用修改版。
+补丁文件名带版本（如 `framework7+9.0.5.patch`）。`npm install` 时若安装的版本与文件名不一致，
+patch-package 仍会尝试应用：hunk 能对上就打成功（只提示版本不匹配），对不上则**直接报错中断**，不会静默留下半套改动。
+所以升级流程是：`npm install framework7@<新版本> framework7-vue@<新版本>` → `npm run patch:make` →
+逐条看补丁是否已被上游修复，能删的 hunk 删掉。
 
 ---
 
-## 验证替换成功
+## 验证
 
-启动项目后，检查控制台无模块加载错误即可。
+启动后检查控制台无模块加载错误；`npm run build` 应无报错。

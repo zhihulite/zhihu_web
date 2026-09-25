@@ -1,5 +1,7 @@
 import { ref, computed, reactive } from 'vue';
-import { tokenManager } from '@/api/auth';
+import { f7 } from 'framework7-vue';
+import { tokenManager } from '@/services/auth.js';
+import $http from '@/services/http.js';
 
 // 创建响应式状态
 const state = reactive({
@@ -35,6 +37,13 @@ const isLoggedIn = computed(() => {
   return state.isLoggedIn;
 });
 
+/** 操作类请求的前置守卫：未登录提示并拒绝 */
+export function requireLogin() {
+  if (state.isLoggedIn) return true;
+  f7.toast.show({ text: '请登录后使用' });
+  return false;
+}
+
 // 刷新用户数据
 async function refreshUser() {
   state.isLoggedIn = !!(tokenManager.getAccessToken() && !tokenManager.isGuest);
@@ -59,13 +68,6 @@ async function refreshUser() {
   } finally {
     state.isLoading = false;
   }
-}
-
-// 重置用户数据
-function resetUser() {
-  state.currentUser = null;
-  state.isLoggedIn = false;
-  events.emit('user:reset');
 }
 
 // 通用的刷新hook - 可以用于任何需要刷新数据的组件
@@ -103,7 +105,6 @@ export function useUser() {
     isLoggedIn,
     isRefreshing,
     refreshUser: refreshUserData,
-    resetUser,
     onUserUpdate
   };
 }
@@ -112,7 +113,6 @@ export default {
   state,
   isLoggedIn,
   refreshUser,
-  resetUser,
   events,
   useRefreshData,
   useUser

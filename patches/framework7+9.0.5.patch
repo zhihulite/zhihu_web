@@ -1,0 +1,553 @@
+diff --git a/node_modules/framework7/components/app/app-class.js b/node_modules/framework7/components/app/app-class.js
+index 09b1e7a..b3d2632 100644
+--- a/node_modules/framework7/components/app/app-class.js
++++ b/node_modules/framework7/components/app/app-class.js
+@@ -13,6 +13,22 @@ import loadModule from './load-module.js';
+ import $jsx from '../../shared/$jsx.js';
+ class Framework7 extends Framework7Class {
+   constructor(params = {}) {
++    const routes = params.routes;
++    if (routes) {
++      params.routes = routes.map(route => {
++        const newRoute = {
++          ...route
++        };
++        const options = newRoute.options ||= {};
++        const props = options.props ||= {};
++        Object.defineProperty(props, 'routeId', {
++          get: () => `${Date.now()}_${Math.random().toString(36).slice(2)}`,
++          enumerable: true,
++          configurable: true
++        });
++        return newRoute;
++      });
++    }
+     super(params);
+     // eslint-disable-next-line
+     if (Framework7.instance && typeof window !== 'undefined') {
+diff --git a/node_modules/framework7/components/data-table/data-table-class.js b/node_modules/framework7/components/data-table/data-table-class.js
+index dcd5a51..57ad653 100644
+--- a/node_modules/framework7/components/data-table/data-table-class.js
++++ b/node_modules/framework7/components/data-table/data-table-class.js
+@@ -3,6 +3,10 @@ import { extend, deleteProps } from '../../shared/utils.js';
+ import Framework7Class from '../../shared/class.js';
+ class DataTable extends Framework7Class {
+   constructor(app, params = {}) {
++    // El
++    const $el = $(params.el);
++    // Because temporarily does not support virtual lists, so if the element does not exist, we can return directly.
++    if ($el[0].f7DataTable) return $el[0].f7DataTable;
+     super(params, [app]);
+     const table = this;
+     const defaults = {};
+@@ -10,17 +14,9 @@ class DataTable extends Framework7Class {
+     // Extend defaults with modules params
+     table.useModulesParams(defaults);
+     table.params = extend(defaults, params);
+-
+-    // El
+-    const $el = $(table.params.el);
+     if ($el.length === 0) return undefined;
+     table.$el = $el;
+     table.el = $el[0];
+-    if (table.$el[0].f7DataTable) {
+-      const instance = table.$el[0].f7DataTable;
+-      table.destroy();
+-      return instance;
+-    }
+     table.$el[0].f7DataTable = table;
+     extend(table, {
+       collapsible: $el.hasClass('data-table-collapsible'),
+diff --git a/node_modules/framework7/components/form/form.js b/node_modules/framework7/components/form/form.js
+index 4b8dd3b..f64abef 100644
+--- a/node_modules/framework7/components/form/form.js
++++ b/node_modules/framework7/components/form/form.js
+@@ -64,6 +64,10 @@ const FormStorage = {
+     const $formEl = $(formEl);
+     const formId = $formEl.attr('id');
+     if (!formId) return;
++    // Check using data attribute
++    if ($formEl[0]._f7FormStorageInitialized) {
++      return;
++    }
+     const initialData = app.form.getFormData(formId);
+     if (initialData) {
+       app.form.fillFromData($formEl, initialData);
+@@ -76,10 +80,12 @@ const FormStorage = {
+       app.emit('formStoreData', $formEl[0], data);
+     }
+     $formEl.on('change submit', store);
++    $formEl[0]._f7FormStorageInitialized = true; // Set flag
+   },
+   destroy(formEl) {
+     const $formEl = $(formEl);
+     $formEl.off('change submit');
++    delete $formEl[0]._f7FormStorageInitialized; // Clear flag
+   }
+ };
+ 
+diff --git a/node_modules/framework7/components/infinite-scroll/infinite-scroll.js b/node_modules/framework7/components/infinite-scroll/infinite-scroll.js
+index d1d3017..3d2697b 100644
+--- a/node_modules/framework7/components/infinite-scroll/infinite-scroll.js
++++ b/node_modules/framework7/components/infinite-scroll/infinite-scroll.js
+@@ -39,6 +39,8 @@ const InfiniteScroll = {
+       app.infiniteScroll.handle(this, e);
+     }
+     $el.each(element => {
++      // skip if already initialized
++      if (element.f7InfiniteScrollHandler) return;
+       element.f7InfiniteScrollHandler = scrollHandler;
+       element.addEventListener('scroll', element.f7InfiniteScrollHandler);
+     });
+diff --git a/node_modules/framework7/components/pull-to-refresh/pull-to-refresh-class.js b/node_modules/framework7/components/pull-to-refresh/pull-to-refresh-class.js
+index 6ab723b..0ec5ca8 100644
+--- a/node_modules/framework7/components/pull-to-refresh/pull-to-refresh-class.js
++++ b/node_modules/framework7/components/pull-to-refresh/pull-to-refresh-class.js
+@@ -4,10 +4,11 @@ import Framework7Class from '../../shared/class.js';
+ import { getDevice } from '../../shared/get-device.js';
+ class PullToRefresh extends Framework7Class {
+   constructor(app, el) {
++    const $el = $(el);
++    if ($el[0].f7PullToRefresh) return $el[0].f7PullToRefresh;
+     super({}, [app]);
+     const ptr = this;
+     const device = getDevice();
+-    const $el = $(el);
+     const $preloaderEl = $el.find('.ptr-preloader');
+     ptr.$el = $el;
+     ptr.el = $el[0];
+@@ -23,7 +24,8 @@ class PullToRefresh extends Framework7Class {
+     ptr.done = function done() {
+       const $transitionTarget = isMaterial ? $preloaderEl : $el;
+       const onTranstionEnd = e => {
+-        if ($(e.target).closest($preloaderEl).length) return;
++        // Material Design platform currently does not support bottom preloader animation.
++        if (!isMaterial && $(e.target).closest($preloaderEl).length) return;
+         $el.removeClass('ptr-transitioning ptr-pull-up ptr-pull-down ptr-closing');
+         $el.trigger('ptr:done');
+         ptr.emit('local::done ptrDone', $el[0]);
+diff --git a/node_modules/framework7/components/swiper/swiper.js b/node_modules/framework7/components/swiper/swiper.js
+index a4d49c9..4d74e7f 100644
+--- a/node_modules/framework7/components/swiper/swiper.js
++++ b/node_modules/framework7/components/swiper/swiper.js
+@@ -4,6 +4,7 @@ import Swiper from 'swiper/bundle';
+ import { register } from 'swiper/element/bundle';
+ import $ from '../../shared/dom7.js';
+ import ConstructorMethods from '../../shared/constructor-methods.js';
++import { extend } from '../../shared/utils.js';
+ register();
+ 
+ 
+@@ -12,8 +13,13 @@ function initSwiper(swiperEl) {
+   const app = this;
+   const $swiperEl = $(swiperEl);
+   if ($swiperEl.length === 0) return;
+-  const isElement = $swiperEl[0].swiper && $swiperEl[0].swiper.isElement;
++  if (!$swiperEl[0].swiper) return;
+   if ($swiperEl[0].swiper && !$swiperEl[0].swiper.isElement) return;
++
++  // skip if already initialized
++  if ($swiperEl[0]._f7SwiperInitialized) return;
++  $swiperEl[0]._f7SwiperInitialized = true;
++  const isElement = $swiperEl[0].swiper && $swiperEl[0].swiper.isElement;
+   let initialSlide;
+   let params = {};
+   let isTabs;
+@@ -92,10 +98,12 @@ export default {
+   },
+   create() {
+     const app = this;
+-    app.swiper = ConstructorMethods({
+-      defaultSelector: '.swiper',
++    app.swiper = extend(ConstructorMethods({
++      defaultSelector: ".swiper",
+       constructor: Swiper,
+-      domProp: 'swiper'
++      domProp: "swiper"
++    }), {
++      init: initSwiper.bind(app)
+     });
+   },
+   on: {
+diff --git a/node_modules/framework7/components/toolbar/toolbar.js b/node_modules/framework7/components/toolbar/toolbar.js
+index 116058e..e8c10da 100644
+--- a/node_modules/framework7/components/toolbar/toolbar.js
++++ b/node_modules/framework7/components/toolbar/toolbar.js
+@@ -32,6 +32,10 @@ const Toolbar = {
+     let highlightWidth;
+     let highlightTranslate;
+     if ($tabbarEl.hasClass('tabbar-scrollable') && $activeLink && $activeLink[0]) {
++      if ($activeLink[0].offsetWidth == 0) {
++        console.warn("ToolBar: ToolBar's scrollable indicator width is 0 because the first active tab width measured as 0.");
++      }
++      ;
+       highlightWidth = `${$activeLink[0].offsetWidth}px`;
+       highlightTranslate = `${$activeLink[0].offsetLeft}px`;
+     } else {
+diff --git a/node_modules/framework7/framework7-bundle.esm.js b/node_modules/framework7/framework7-bundle.esm.js
+index 2f9ea39..79febb5 100644
+--- a/node_modules/framework7/framework7-bundle.esm.js
++++ b/node_modules/framework7/framework7-bundle.esm.js
+@@ -7,7 +7,7 @@
+  *
+  * Released under the MIT License
+  *
+- * Released on: May 27, 2026
++ * Released on: June 2, 2026
+  */
+ 
+ import $ from './shared/dom7.js';
+diff --git a/node_modules/framework7/framework7-lite-bundle.esm.js b/node_modules/framework7/framework7-lite-bundle.esm.js
+index 4b7b6aa..ab4d108 100644
+--- a/node_modules/framework7/framework7-lite-bundle.esm.js
++++ b/node_modules/framework7/framework7-lite-bundle.esm.js
+@@ -7,7 +7,7 @@
+  *
+  * Released under the MIT License
+  *
+- * Released on: May 27, 2026
++ * Released on: June 2, 2026
+  */
+ 
+ import $ from './shared/dom7.js';
+diff --git a/node_modules/framework7/framework7-lite.esm.js b/node_modules/framework7/framework7-lite.esm.js
+index 6c6af64..fb5286b 100644
+--- a/node_modules/framework7/framework7-lite.esm.js
++++ b/node_modules/framework7/framework7-lite.esm.js
+@@ -7,7 +7,7 @@
+  *
+  * Released under the MIT License
+  *
+- * Released on: May 27, 2026
++ * Released on: June 2, 2026
+  */
+ 
+ import $ from './shared/dom7.js';
+@@ -33,6 +33,11 @@ import Subnavbar from './components/subnavbar/subnavbar.js';
+ import TouchRipple from './components/touch-ripple/touch-ripple.js';
+ import TouchHighlight from './components/touch-highlight/touch-highlight.js';
+ import Modal from './components/modal/modal.js';
+-Framework7.use([DeviceModule, SupportModule, UtilsModule, ResizeModule, TouchModule, ClicksModule, RouterModule, HistoryModule, ServiceWorkerModule, StoreModule, Statusbar, View, Navbar, Toolbar, Subnavbar, TouchRipple, TouchHighlight, Modal]);
++
++//IMPORT_COMPONENTS
++
++Framework7.use([DeviceModule, SupportModule, UtilsModule, ResizeModule, TouchModule, ClicksModule, RouterModule, HistoryModule, ServiceWorkerModule, StoreModule, Statusbar, View, Navbar, Toolbar, Subnavbar, TouchRipple, TouchHighlight, Modal
++//INSTALL_COMPONENTS
++]);
+ export { $ as Dom7, utils, getDevice, getSupport, createStore };
+ export default Framework7;
+diff --git a/node_modules/framework7/framework7-lite.js b/node_modules/framework7/framework7-lite.js
+new file mode 100644
+index 0000000..81f2b64
+--- /dev/null
++++ b/node_modules/framework7/framework7-lite.js
+@@ -0,0 +1,32 @@
++import $ from './shared/dom7.js';
++import Framework7 from './components/app/app-class.js';
++
++//IMPORT_HELPERS
++
++import DeviceModule from './modules/device/device.js';
++import SupportModule from './modules/support/support.js';
++import UtilsModule from './modules/utils/utils.js';
++import ResizeModule from './modules/resize/resize.js';
++import TouchModule from './modules/touch/touch.js';
++import ClicksModule from './modules/clicks/clicks.js';
++import RouterModule from './modules/router/router.js';
++import HistoryModule from './modules/history/history.js';
++import ServiceWorkerModule from './modules/service-worker/service-worker.js';
++import StoreModule, { createStore } from './modules/store/store.js';
++import Statusbar from './components/statusbar/statusbar.js';
++import View from './components/view/view.js';
++import Navbar from './components/navbar/navbar.js';
++import Toolbar from './components/toolbar/toolbar.js';
++import Subnavbar from './components/subnavbar/subnavbar.js';
++import TouchRipple from './components/touch-ripple/touch-ripple.js';
++import TouchHighlight from './components/touch-highlight/touch-highlight.js';
++import Modal from './components/modal/modal.js';
++
++//IMPORT_COMPONENTS
++
++Framework7.use([DeviceModule, SupportModule, UtilsModule, ResizeModule, TouchModule, ClicksModule, RouterModule, HistoryModule, ServiceWorkerModule, StoreModule, Statusbar, View, Navbar, Toolbar, Subnavbar, TouchRipple, TouchHighlight, Modal
++//INSTALL_COMPONENTS
++]);
++
++//NAMED_EXPORT
++export default Framework7;
+\ No newline at end of file
+diff --git a/node_modules/framework7/framework7.esm.js b/node_modules/framework7/framework7.esm.js
+index e8a363c..6dc0fe1 100644
+--- a/node_modules/framework7/framework7.esm.js
++++ b/node_modules/framework7/framework7.esm.js
+@@ -7,7 +7,7 @@
+  *
+  * Released under the MIT License
+  *
+- * Released on: May 27, 2026
++ * Released on: June 2, 2026
+  */
+ 
+ import $ from './shared/dom7.js';
+@@ -36,7 +36,12 @@ import TouchRipple from './components/touch-ripple/touch-ripple.js';
+ import TouchHighlight from './components/touch-highlight/touch-highlight.js';
+ import Modal from './components/modal/modal.js';
+ import Router from './modules/router/router-class.js';
++
++//IMPORT_COMPONENTS
++
+ Router.use([RouterComponentLoaderModule]);
+-Framework7.use([DeviceModule, SupportModule, UtilsModule, ResizeModule, TouchModule, ClicksModule, RouterModule, HistoryModule, ComponentModule, ServiceWorkerModule, StoreModule, Statusbar, View, Navbar, Toolbar, Subnavbar, TouchRipple, Modal, TouchHighlight]);
++Framework7.use([DeviceModule, SupportModule, UtilsModule, ResizeModule, TouchModule, ClicksModule, RouterModule, HistoryModule, ComponentModule, ServiceWorkerModule, StoreModule, Statusbar, View, Navbar, Toolbar, Subnavbar, TouchRipple, Modal, TouchHighlight
++//INSTALL_COMPONENTS
++]);
+ export { Component, $jsx, $ as Dom7, utils, getDevice, getSupport, createStore };
+ export default Framework7;
+diff --git a/node_modules/framework7/framework7.js b/node_modules/framework7/framework7.js
+new file mode 100644
+index 0000000..158d8b9
+--- /dev/null
++++ b/node_modules/framework7/framework7.js
+@@ -0,0 +1,43 @@
++import $ from './shared/dom7.js';
++import Framework7 from './components/app/app-class.js';
++
++//IMPORT_HELPERS
++
++import DeviceModule from './modules/device/device.js';
++import SupportModule from './modules/support/support.js';
++import UtilsModule from './modules/utils/utils.js';
++import ResizeModule from './modules/resize/resize.js';
++import TouchModule from './modules/touch/touch.js';
++import ClicksModule from './modules/clicks/clicks.js';
++import RouterModule from './modules/router/router.js';
++import RouterComponentLoaderModule from './modules/router/component-loader.js';
++import ComponentModule, { Component, $jsx } from './modules/component/component.js';
++import HistoryModule from './modules/history/history.js';
++import ServiceWorkerModule from './modules/service-worker/service-worker.js';
++import StoreModule, { createStore } from './modules/store/store.js';
++import Statusbar from './components/statusbar/statusbar.js';
++import View from './components/view/view.js';
++import Navbar from './components/navbar/navbar.js';
++import Toolbar from './components/toolbar/toolbar.js';
++import Subnavbar from './components/subnavbar/subnavbar.js';
++import TouchRipple from './components/touch-ripple/touch-ripple.js';
++import TouchHighlight from './components/touch-highlight/touch-highlight.js';
++import Modal from './components/modal/modal.js';
++import Router from './modules/router/router-class.js';
++
++//IMPORT_COMPONENTS
++
++// UMD_ONLY_START
++if (typeof window !== 'undefined') {
++  // Dom7
++  if (!window.Dom7) window.Dom7 = $;
++}
++// UMD_ONLY_END
++
++Router.use([RouterComponentLoaderModule]);
++Framework7.use([DeviceModule, SupportModule, UtilsModule, ResizeModule, TouchModule, ClicksModule, RouterModule, HistoryModule, ComponentModule, ServiceWorkerModule, StoreModule, Statusbar, View, Navbar, Toolbar, Subnavbar, TouchRipple, Modal, TouchHighlight
++//INSTALL_COMPONENTS
++]);
++
++//NAMED_EXPORT
++export default Framework7;
+\ No newline at end of file
+diff --git a/node_modules/framework7/less/plugin.js b/node_modules/framework7/less/plugin.js
+new file mode 100644
+index 0000000..ca7b37c
+--- /dev/null
++++ b/node_modules/framework7/less/plugin.js
+@@ -0,0 +1,15 @@
++const fs = require('fs');
++function base64Encode(file) {
++  // read binary data
++  const bitmap = fs.readFileSync(file);
++  // convert binary data to base64 encoded string
++  return Buffer.from(bitmap).toString('base64');
++}
++module.exports = {
++  install(less, pluginManager, functions) {
++    functions.add('framework7_coreIconsFont', () => {
++      const iconsFontBase64 = base64Encode('./src/core/icons/font/framework7-core-icons.woff');
++      return iconsFontBase64;
++    });
++  }
++};
+\ No newline at end of file
+diff --git a/node_modules/framework7/modules/router/back.js b/node_modules/framework7/modules/router/back.js
+index f4e2d91..d9a0ea0 100644
+--- a/node_modules/framework7/modules/router/back.js
++++ b/node_modules/framework7/modules/router/back.js
+@@ -507,7 +507,7 @@ function back(...args) {
+   }
+   if (!navigateOptions.force && $previousPage.length && !skipMaster) {
+     const previousPageObj = $previousPage[0].f7Page;
+-    if (router.params.browserHistory && previousPageObj && router.history[router.history.length - 2] !== previousPageObj.route.url) {
++    if (previousPageObj && router.history[router.history.length - 2] !== previousPageObj.route.url) {
+       router.back(router.history[router.history.length - 2], extend(navigateOptions, {
+         force: true,
+         props: router.propsHistory[router.propsHistory.length - 2] || {}
+diff --git a/node_modules/framework7/modules/router/component-loader.js b/node_modules/framework7/modules/router/component-loader.js
+index a88b1f3..3128684 100644
+--- a/node_modules/framework7/modules/router/component-loader.js
++++ b/node_modules/framework7/modules/router/component-loader.js
+@@ -107,11 +107,13 @@ export default {
+         if (options.componentOptions && options.componentOptions.root) {
+           componentRoot = options.componentOptions.root;
+         }
++        const routeId = componentProps.routeId;
+         app.component.create(componentFunction, componentProps, {
+           context: componentContext,
+           el: componentEl,
+           root: componentRoot
+         }).then(createdComponent => {
++          if (routeId) createdComponent.el.routeId = routeId;
+           resolve(createdComponent.el);
+         }).catch(err => {
+           reject(err);
+diff --git a/node_modules/framework7/modules/router/router-class.js b/node_modules/framework7/modules/router/router-class.js
+index e9a63b4..aaa84cc 100644
+--- a/node_modules/framework7/modules/router/router-class.js
++++ b/node_modules/framework7/modules/router/router-class.js
+@@ -184,10 +184,15 @@ class Router extends Framework7Class {
+     }
+     return router.findElement('.page', router.tempDom);
+   }
+-  findElement(stringSelector, container) {
++  findElement(stringSelector, container, depth = 0) {
+     const router = this;
+     const view = router.view;
+     const app = router.app;
++    const MAX_DEPTH = 10;
++    if (depth > MAX_DEPTH) {
++      console.error('Framework7: findElement recursion depth exceeded when searching for "' + stringSelector + '". Please check the container parameter:', container);
++      throw new Error('Framework7: findElement recursion depth exceeded when searching for "' + stringSelector + '"');
++    }
+ 
+     // Modals Selector
+     const modalsSelector = '.popup, .dialog, .popover, .actions-modal, .sheet-modal, .login-screen, .page';
+@@ -205,7 +210,7 @@ class Router extends Framework7Class {
+       }
+     }
+     if (found.length === 1) return found;
+-    found = router.findElement(selector, $container);
++    found = router.findElement(selector, $container, depth + 1);
+     if (found && found.length === 1) return found;
+     if (found && found.length > 1) return $(found[0]);
+     return undefined;
+@@ -652,8 +657,9 @@ class Router extends Framework7Class {
+     if (callback === 'mounted') {
+       attachEvents();
+     }
++    const routeId = page.routeId || page.route.url;
+     if (callback === 'init') {
+-      if (restoreScrollTopOnBack && (from === 'previous' || !from) && to === 'current' && router.scrollHistory[page.route.url] && !$pageEl.hasClass('no-restore-scroll')) {
++      if (restoreScrollTopOnBack && (from === 'previous' || !from) && to === 'current' && router.scrollHistory[routeId] && !$pageEl.hasClass('no-restore-scroll')) {
+         let $pageContent = $pageEl.find('.page-content');
+         if ($pageContent.length > 0) {
+           // eslint-disable-next-line
+@@ -661,7 +667,7 @@ class Router extends Framework7Class {
+             return $(pageContentEl).parents('.tab:not(.tab-active)').length === 0 && !$(pageContentEl).is('.tab:not(.tab-active)');
+           });
+         }
+-        $pageContent.scrollTop(router.scrollHistory[page.route.url]);
++        $pageContent.scrollTop(router.scrollHistory[routeId]);
+       }
+       attachEvents();
+       if ($pageEl[0].f7PageInitialized) {
+@@ -680,11 +686,11 @@ class Router extends Framework7Class {
+           return $(pageContentEl).parents('.tab:not(.tab-active)').length === 0 && !$(pageContentEl).is('.tab:not(.tab-active)');
+         });
+       }
+-      router.scrollHistory[page.route.url] = $pageContent.scrollTop();
++      router.scrollHistory[routeId] = $pageContent.scrollTop();
+     }
+     if (restoreScrollTopOnBack && callback === 'beforeOut' && from === 'current' && to === 'next') {
+       // Delete scroll position
+-      delete router.scrollHistory[page.route.url];
++      delete router.scrollHistory[routeId];
+     }
+     $pageEl.trigger(colonName, page);
+     router.emit(camelName, page);
+@@ -785,6 +791,11 @@ class Router extends Framework7Class {
+       // eslint-disable-next-line
+       console.warn('Framework7: wrong or not complete browserHistory configuration, trying to guess browserHistoryRoot');
+       browserHistoryRoot = location.pathname.split('index.html')[0];
++    } else if (browserHistory && !browserHistoryRoot) {
++      if (documentUrl.startsWith('/index.html')) {
++        window.history.replaceState(window.history.state, document.title, location.pathname.replace(/^\/index\.html/, '/') + location.search + location.hash);
++        documentUrl = documentUrl.replace(/^\/index\.html/, '/');
++      }
+     }
+     if (!browserHistory || !browserHistoryOnLoad) {
+       if (!initialUrl) {
+@@ -807,6 +818,15 @@ class Router extends Framework7Class {
+         initialUrl = documentUrl;
+       }
+       router.restoreHistory();
++      const initialRoute = router.findMatchingRoute(initialUrl);
++      const anotherViewName = initialRoute.route.viewName;
++      if (initialRoute && anotherViewName && app.view[anotherViewName] !== view) {
++        if (router.params.url) {
++          initialUrl = router.params.url;
++        } else {
++          console.error('Framework7: Initial page not found, using default URL (null). Please set the data-url attribute on your view element.', view);
++        }
++      }
+       if (router.history.indexOf(initialUrl) >= 0) {
+         router.history = router.history.slice(0, router.history.indexOf(initialUrl) + 1);
+       } else if (router.params.url === initialUrl) {
+@@ -814,13 +834,23 @@ class Router extends Framework7Class {
+       } else if (History.state && History.state[view.id] && History.state[view.id].url === router.history[router.history.length - 1]) {
+         initialUrl = router.history[router.history.length - 1];
+       } else {
+-        router.history = [documentUrl.split(browserHistorySeparator)[0] || '/', initialUrl];
++        router.history = [router.params.url || documentUrl.split(browserHistorySeparator)[0] || '/', initialUrl];
+       }
+       if (router.history.length > 1) {
+         historyRestored = true;
+       } else {
+         router.history = [];
+       }
++      router.propsHistory = [];
++      for (let i = 0; i < router.history.length; i++) {
++        const navigateUrl = router.history[i];
++        const route = router.findMatchingRoute(navigateUrl);
++        const anotherViewName = route.route.viewName;
++        if (anotherViewName && router.view !== app.views[anotherViewName]) continue;
++        router.propsHistory.push({
++          ...(route?.route?.options?.props || {})
++        });
++      }
+       router.saveHistory();
+     }
+     router.initialUrl = initialUrl;
+diff --git a/node_modules/framework7/modules/router/swipe-back.js b/node_modules/framework7/modules/router/swipe-back.js
+index 1c7b913..66652ed 100644
+--- a/node_modules/framework7/modules/router/swipe-back.js
++++ b/node_modules/framework7/modules/router/swipe-back.js
+@@ -216,8 +216,10 @@ function SwipeBack(r) {
+         // Update History
+         if (router.history.length === 1) {
+           router.history.unshift(router.url);
++          router.propsHistory.unshift($previousPageEl[0].f7Page?.props || {});
+         }
+         router.history.pop();
++        router.propsHistory.pop();
+         router.saveHistory();
+ 
+         // Update push state
+diff --git a/node_modules/framework7/shared/history.js b/node_modules/framework7/shared/history.js
+index 8f1f608..5454089 100644
+--- a/node_modules/framework7/shared/history.js
++++ b/node_modules/framework7/shared/history.js
+@@ -44,6 +44,9 @@ const History = {
+     state = History.state;
+     if (!state) state = {};
+     app.views.forEach(view => {
++      const pageEl = view.el;
++      const pageElstyle = window.getComputedStyle(pageEl);
++      if (pageElstyle.display === 'none') return;
+       const router = view.router;
+       let viewState = state[view.id];
+       if (!viewState && view.params.browserHistory) {

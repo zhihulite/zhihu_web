@@ -7,13 +7,16 @@
     "dev": "vite",
     "build": "vite build && node scripts/generate-version.js && npx workbox generateSW workbox-config.js",
     "preview": "vite preview",
-    "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/"
+    "test": "node --import ./tests/helpers/setup.mjs --test \"tests/**/*.test.js\"",
+    "test:live": "node scripts/live-tests.mjs",
+    "patch:make": "node scripts/make-patches.mjs",
+    "postinstall": "patch-package && cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/"
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
-    "framework7": "^9.0.5",
+    "framework7": "9.0.5",
     "framework7-icons": "^5.0.5",
-    "framework7-vue": "^9.0.5",
+    "framework7-vue": "9.0.5",
     "html2canvas-pro": "^2.0.4",
     "material-icons": "^1.13.14",
     "swiper": "^12.2.0",
@@ -22,6 +25,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
     "cpy-cli": "^7.0.0",
+    "patch-package": "^8.0.1",
     "vite": "^8.0.16",
     "workbox-cli": "^7.4.1"
   },

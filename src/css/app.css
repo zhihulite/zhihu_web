@@ -1,1 +1,200 @@
 /* Your app custom styles here */
+
+/* 正文色走 F7 的 --f7-text-color，这里只补它没有的两级弱化色与占位底色，深浅各一套 */
+:root {
+    --app-sub-text: rgba(0, 0, 0, 0.55);
+    --app-faint-text: rgba(0, 0, 0, 0.28);
+    --app-divider-color: rgba(0, 0, 0, 0.08);
+    --app-placeholder-bg: #f0f0f0;
+}
+
+html.dark {
+    --app-sub-text: rgba(255, 255, 255, 0.6);
+    --app-faint-text: rgba(255, 255, 255, 0.32);
+    --app-divider-color: rgba(255, 255, 255, 0.14);
+    --app-placeholder-bg: rgba(255, 255, 255, 0.08);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 32px;
+    color: var(--app-sub-text);
+    text-align: center;
+}
+
+.empty-state .empty-subtext {
+    margin-top: 0;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.no-more {
+    padding: 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--app-sub-text);
+}
+
+.page-loader {
+    width: 100%;
+}
+
+/* OLED 纯黑：仅在深色模式且开启 OLED 时覆盖背景为纯黑 */
+html.dark.oled {
+    --f7-page-bg-color: #000;
+    --f7-bars-bg-color: #000;
+    --f7-list-bg-color: #000;
+    --f7-card-bg-color: #0a0a0a;
+    --f7-tabbar-link-active-bg-color: #000;
+    --f7-sheet-bg-color: #000;
+    --f7-md-surface: #000;
+    --f7-md-surface-1: #0a0a0a;
+    --f7-md-surface-2: #0a0a0a;
+}
+
+html.dark.oled .page,
+html.dark.oled .navbar-bg,
+html.dark.oled .toolbar-bg {
+    background-color: #000;
+}
+
+/* 无图模式：内容配图连同其容器一起不占位，头像与图标保留 */
+html.no-image .content-img,
+html.no-image .hero-image,
+html.no-image .card-cover,
+html.no-image .hot-thumb,
+html.no-image .item-image,
+html.no-image .moment-image,
+html.no-image .content-renderer img,
+html.no-image .swiper-slide img {
+    display: none;
+}
+
+html.no-image .card-image-wrap,
+html.no-image .hero-image-container,
+html.no-image .hot-img-wrap {
+    display: none;
+}
+
+/* 表情包：v-html 注入的 img，用全局样式（scoped 约束不到）。无图模式下保留表情 */
+.emoticon-img {
+    display: inline-block;
+    width: 1.4em;
+    height: 1.4em;
+    vertical-align: text-bottom;
+    margin: 0 1px;
+}
+
+/* 底部弹层共用外壳：宽度上限、圆角与纵向骨架，各 sheet 只保留自己的高度与内容。
+   .sheet-modal-inner 是 f7-sheet 自身渲染的容器，业务代码在其内再套一层同名 div 承接
+   flex 布局（f7-list / f7-messagebar 作为直接子节点会被 f7-sheet 归入 fixed 层，故不能省）。 */
+.sheet-bottom {
+    max-width: 600px;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto !important;
+    width: 100%;
+    border-radius: 24px 24px 0 0;
+}
+
+.sheet-bottom > .sheet-modal-inner > .sheet-modal-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.sheet-scroll-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--app-divider-color);
+    flex-shrink: 0;
+}
+
+.sheet-header .title {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.sheet-header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.sheet-primary-btn {
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 12px;
+}
+
+/* 双栏时两栏平分视口去掉侧栏后的剩余宽度（侧栏在 view 之外，不占这 100%） */
+.view-master-detail {
+    --f7-page-master-width: 50%;
+}
+
+/* 双栏时主页只占 --f7-page-master-width（视口的一半），推荐流列数按栏宽而不是视口 */
+.view-master-detail .page-master .card-grid {
+    column-count: 1;
+}
+
+/* 双栏空栏时的默认占位：常挂在 View 底层（.page 是 z-index:1 且不透明，有页面就盖住它），
+   只有 View 处于双栏形态时才参与显示 */
+.detail-placeholder {
+    display: none;
+}
+
+.view-master-detail .detail-placeholder {
+    display: flex;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--f7-page-master-width);
+    right: 0;
+    z-index: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--f7-page-bg-color);
+    pointer-events: none;
+}
+
+.detail-placeholder img {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+}
+
+.detail-placeholder span {
+    font-size: 13px;
+    color: var(--f7-text-color);
+    opacity: 0.55;
+}
+
+/* 正文淡入：分段块与视频进场 0.1s，配图 0.2s，避免长文渲染时内容直接跳出 */
+@keyframes appFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.content-renderer > * {
+    animation: appFadeIn 0.1s ease-out;
+}
+
+.content-renderer img {
+    animation: appFadeIn 0.2s ease-in-out;
+}

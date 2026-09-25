@@ -1,15 +1,22 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { f7, f7ready } from 'framework7-vue';
-import AdaptiveNavigation from './components/AdaptiveNavigation.vue';
-import MoreMenuDialog from './components/MoreMenuDialog.vue';
-import { logout } from './api/auth.js';
+import AdaptiveNavigation from '@/components/AdaptiveNavigation.vue';
+import MoreMenuDialog from '@/components/MoreMenuDialog.vue';
+import LoginDialog from '@/components/LoginDialog.vue';
+import { showLoginDialog } from '@/core/login-dialog.js';
+import { logout } from '@/services/auth.js';
 import { useUser } from '@/composables/userManager';
-import routes from './f7-routes.js';
-import store from './store.js';
-import { checkTipVersion } from './utils/tip_manager.js';
+import routes from '@/core/routes.js';
+import { installPageCachePruner } from '@/core/router.js';
+import { installThemeSync } from '@/composables/useTheme.js';
+import { installLayout } from '@/core/layout.js';
+import { settings } from '@/core/settings.js';
+import { checkUpdate, syncVersionInfo } from '@/services/update.js';
+import { checkTipVersion } from '@/services/tip.js';
+import { PANEL_BREAKPOINT, parallelBreakpoint } from '@/core/layout.js';
 
-const { resetUser, refreshUser } = useUser();
+const { refreshUser } = useUser();
 
 const isMoreDialogOpen = ref(false);
 const isMobile = ref(false);
@@ -23,6 +30,10 @@ const f7params = {
   name: 'Zhihu Lite',
   theme: 'auto',
   routes: routes, // Pass routes here
+  touch: {
+    tapHold: true,
+    tapHoldDelay: 550,
+  },
   toast: {
     closeTimeout: 3000,
   },
@@ -35,9 +46,19 @@ const f7params = {
   } : {},
 };
 
+// View 只在创建时读一次双栏断点，所以「平行世界」开关要重启才生效
+const masterDetailBreakpoint = parallelBreakpoint();
+
+// 双栏空栏占位用的应用图标（放在 public 下，按部署基址取）
+const appIconUrl = `${import.meta.env.BASE_URL}icons/192x192.png`;
+
+let uninstallThemeSync = null;
+
 onMounted(async () => {
   f7ready((f7) => {
-    loadThemeSettings(f7);
+    uninstallThemeSync = installThemeSync(f7);
+    installLayout();
+    installPageCachePruner();
 
     // 首次打开提示
     checkTipVersion('welcome_tip', 1769350802686, () => {
@@ -51,117 +72,54 @@ onMounted(async () => {
       });
     });
 
-    // 仅在默认默认开启时处理
-    const panel = f7.panel.get("left");
-    if (panel.opened) {
-      const PANEL_CLOSED_KEY = 'panel_was_closed';
-      let wasPanelClosed = localStorage.getItem(PANEL_CLOSED_KEY) === 'true';
-      if (wasPanelClosed) {
-        panel.toggle();
-      }
+    // 启动期自动检查更新（静默，仅有新版本时提示；尊重「忽略此版本」）
+    // 先记下本地部署版本，比对才有基准
+    syncVersionInfo().then(() => {
+      if (settings.autoCheckUpdate) checkUpdate({ silent: true });
+    });
 
-      const handlePanelOpen = () => {
-        localStorage.removeItem(PANEL_CLOSED_KEY);
-      };
-
-      const handlePanelClose = () => {
-        localStorage.setItem(PANEL_CLOSED_KEY, 'true');
-      };
-
-      panel.on('open', handlePanelOpen);
-      panel.on('close', handlePanelClose);
-
-    }
-    window.testf7 = f7;
+    // 侧栏与双栏的视口策略都在 installLayout 里
     isNativeApp.value = f7.device.capacitor || f7.device.cordova;
     isMobile.value = !f7.device.desktop;
   });
 });
 
-
-let themeListener = null;
-
-const handleSystemThemeChange = (e) => {
-  try {
-    const stored = localStorage.getItem('theme_config');
-    if (stored) {
-      const config = JSON.parse(stored);
-      if (config.followSystem) {
-        if (f7) f7.setDarkMode(e.matches);
-      }
-    }
-  } catch (err) { console.error(err); }
-};
-
-const loadThemeSettings = (f7) => {
-  try {
-    const stored = localStorage.getItem('theme_config');
-    if (stored) {
-      const config = JSON.parse(stored);
-
-      if (config.followSystem) {
-        const mq = window.matchMedia('(prefers-color-scheme: dark)');
-        f7.setDarkMode(mq.matches);
-
-        if (themeListener) mq.removeEventListener('change', themeListener);
-        themeListener = handleSystemThemeChange;
-        mq.addEventListener('change', themeListener);
-      } else {
-        if (config.darkMode !== undefined) {
-          f7.setDarkMode(config.darkMode);
-        }
-      }
-
-      if (config.fontSize) {
-        document.documentElement.style.setProperty('--f7-font-size', config.fontSize);
-      }
-      if (config.useCustomColor && config.customColor && typeof config.customColor === 'string' && config.customColor.trim() !== '') {
-        f7.setColorTheme(config.customColor);
-      } else if (config.color && f7.colors[config.color]) {
-        f7.setColorTheme(f7.colors[config.color]);
-      }
-      let scheme = 'default';
-      const mono = config.monochrome;
-      const vib = config.vibrant;
-      if (mono && vib) scheme = 'monochrome-vibrant';
-      else if (mono) scheme = 'monochrome';
-      else if (vib) scheme = 'vibrant';
-      f7.setMdColorScheme(scheme);
-    }
-  } catch (e) {
-    console.error('Failed to load theme settings in App', e);
-  }
-};
-
 onUnmounted(() => {
-  if (themeListener) {
-    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', themeListener);
-  }
+  uninstallThemeSync?.();
 });
 
 const handleLogout = () => {
-  if (window.confirm("确定要退出登录吗？")) {
-    logout().then(() => {
-      resetUser();
-      refreshUser();
-      const router = (f7 && f7.views && f7.views.main && f7.views.main.router);
-      if (router) {
-        router.navigate('/', { clearPreviousHistory: true });
-      }
-    });
-  }
+  f7.dialog.confirm('确定要退出登录吗？', async () => {
+    try {
+      await logout();
+    } catch (e) {
+      // 服务端登出失败也要完成本地清理，凭证已在 logout() 内清除
+      console.error('退出登录请求失败', e);
+    }
+    refreshUser();
+    const router = f7.views?.main?.router;
+    if (router) {
+      router.navigate('/', { clearPreviousHistory: true });
+    }
+  });
 };
 const browserHistoryRoot = ref(isNativeApp.value ? undefined : window.location.pathname);
 
 </script>
 
 <template>
-  <f7-app v-bind="f7params" :store="store">
+  <f7-app v-bind="f7params">
 
     <f7-view main class="safe-areas" url="/" :browserHistory="!isNativeApp" :browserHistoryRoot="browserHistoryRoot"
-      :restoreScrollTopOnBack="false"></f7-view>
+      :master-detail-breakpoint="masterDetailBreakpoint" :restoreScrollTopOnBack="false">
+      <!-- 双栏空栏时的默认占位：常挂在 View 底层，有页面就被盖住，View 不在双栏形态时不显示 -->
+      <div class="detail-placeholder">
+        <img :src="appIconUrl" alt="">
+        <span>Zyphron</span>
+      </div>
+    </f7-view>
 
-    <f7-panel left cover :visible-breakpoint="768" resizable>
+    <f7-panel left cover :visible-breakpoint="PANEL_BREAKPOINT" resizable>
       <f7-view>
         <f7-page>
           <AdaptiveNavigation :onLogout="handleLogout" :onMoreClick="() => isMoreDialogOpen = true" />
@@ -170,5 +128,8 @@ const browserHistoryRoot = ref(isNativeApp.value ? undefined : window.location.p
     </f7-panel>
 
     <MoreMenuDialog v-model="isMoreDialogOpen" :f7router="f7.views?.main?.router" />
+
+    <!-- 登录弹窗挂在全局：任意页面正文里的 signin 链接都能唤起 -->
+    <LoginDialog v-model="showLoginDialog" @login-success="refreshUser" />
   </f7-app>
 </template>

@@ -9,8 +9,8 @@ import {
     loginWithPassword,
     loginWithCode,
     sendSmsCode,
-} from '../api/auth.js';
-import { updateZhihuLoginData } from '../api/utils/zhihu-module.js';
+} from '@/services/auth.js';
+import { updateZhihuLoginData } from '@/services/zhihu/module.js';
 
 const props = defineProps({
     modelValue: Boolean
@@ -227,11 +227,6 @@ const handleSendCode = async () => {
 const switchMethod = () => {
     loginMethod.value = loginMethod.value === 'password' ? 'code' : 'password';
     error.value = '';
-};
-
-const handleDialogClose = (e) => {
-    // F7 popup closed
-    emit('update:modelValue', false);
 };
 
 const handleCancel = () => {

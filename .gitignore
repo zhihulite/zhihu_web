@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .vite
+
+# dev 反代的种子 cookie：里面是知乎会话凭证，绝不入库
+.devcookie
